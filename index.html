@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Wubo · Lecture A4</title>
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<style>
+  :root{
+    --violet:#5914D0; --violet-soft:#F7F4FE; --violet-line:#C9B8F0;
+    --jaune:#FFDD0B; --ink:#2B2B2B; --muted:#7A7A7A; --hint:#A0A0A0; --rule:#E2E2E2;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#ECECE9;font-family:var(--sans);color:var(--ink)}
+  .bar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;background:#fff;border-bottom:1px solid #DEDEDE}
+  .bar label{font-size:12px;color:var(--muted)}
+  .bar input,.bar select{font:inherit;font-size:13px;padding:6px 8px;border:1px solid #D2D2D2;border-radius:6px;background:#fff}
+  .bar input#title{min-width:180px}
+  .bar input#intro{min-width:240px;flex:1}
+  .btn{font:inherit;font-size:13px;font-weight:500;cursor:pointer;border:none;border-radius:6px;padding:7px 14px;background:var(--violet);color:#fff}
+  .btn.alt{background:#fff;color:var(--violet);border:1px solid var(--violet-line)}
+  .btn:active{transform:scale(.98)}
+  .picker{background:#fff;border-bottom:1px solid #DEDEDE;padding:8px 14px;max-height:170px;overflow:auto}
+  .picker .ttl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+  .picker .opts{display:flex;flex-wrap:wrap;gap:6px 16px}
+  .picker label{display:flex;gap:6px;align-items:flex-start;font-size:13px;max-width:330px;cursor:pointer}
+  .picker input{margin-top:2px}
+  .picker .mini{font-size:11px;color:var(--violet);cursor:pointer;margin-right:12px}
+  .canvas{padding:22px 14px;display:flex;justify-content:center}
+  .page{width:794px;min-height:1123px;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:2px;box-shadow:0 1px 6px rgba(0,0,0,.12);padding:54px 60px}
+  .head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid var(--jaune);padding-bottom:10px}
+  .brand{display:flex;align-items:center}
+  .brand img{height:42px;width:auto;display:block}
+  .meta{font-size:11px;color:var(--hint);text-align:right;line-height:1.5}
+  .doctitle{font-size:26px;font-weight:600;color:var(--violet);margin:26px 0 2px;line-height:1.15}
+  .intro{font-size:13.5px;color:#444;line-height:1.6;margin:6px 0 14px;white-space:pre-wrap}
+  .docsub{font-size:12px;color:var(--muted);margin-bottom:18px}
+  .section{margin:0 0 18px;break-inside:avoid}
+  .section h3{font-size:14px;font-weight:600;color:var(--violet);margin:0 0 7px;padding-bottom:4px;border-bottom:1px solid var(--rule)}
+  .field{margin:0 0 9px}
+  .field .k{font-size:11px;font-weight:600;color:var(--violet);text-transform:uppercase;letter-spacing:.5px}
+  .field .v{font-size:13.5px;line-height:1.65;white-space:pre-wrap;margin-top:1px}
+  .imgwrap{margin:10px 0}
+  .imgwrap img{max-width:100%;border:1px solid var(--rule);border-radius:6px;display:block}
+  .imgzone{border:1.5px dashed var(--violet-line);background:var(--violet-soft);border-radius:6px;padding:16px;text-align:center;color:var(--violet);font-size:12px}
+  .foot{display:flex;justify-content:space-between;border-top:1px solid var(--rule);margin-top:30px;padding-top:8px;font-size:10.5px;color:var(--hint)}
+  .empty{color:var(--muted);font-size:14px;padding:40px;text-align:center}
+  @media print{html,body{background:#fff}.bar,.picker{display:none}.canvas{padding:0}.page{width:auto;min-height:auto;box-shadow:none;border:none;border-radius:0;padding:0}}
+  @page{size:A4;margin:16mm}
+</style>
+</head>
+<body>
+  <div class="bar">
+    <label>Titre</label><input id="title" placeholder="(nom de la table)"/>
+    <label>Intro</label><input id="intro" placeholder="Phrase d'introduction (optionnel)"/>
+    <label>Lignes</label>
+    <select id="mode">
+      <option value="selection">Sélection</option>
+      <option value="table">Table entière</option>
+      <option value="record">Ligne active</option>
+    </select>
+    <button class="btn alt" id="reload">Rafraîchir</button>
+    <button class="btn" id="print">Imprimer / PDF A4</button>
+  </div>
+  <div class="picker" id="picker" style="display:none">
+    <div class="ttl">Choisir les lignes à afficher
+      <span class="mini" id="all">tout cocher</span>
+      <span class="mini" id="none">tout décocher</span>
+    </div>
+    <div class="opts" id="opts"></div>
+  </div>
+  <div class="canvas"><div class="page" id="page"><div class="empty">Connexion à Grist…</div></div></div>
+<script>
+(function(){
+  "use strict";
+  var allRecords=[], currentRecord=null, tableId="", selected={}, optsLoaded=false;
+  var SKIP=["id","manualSort"];
+  var TITLE_KEYS=["rubrique","titre","title","nom","name","concurrent","kit","bloc","metrique","risque","pilier","audience","sous_segment","source","indicateur","framework","objectif","poste"];
+  function prettify(id){return String(id).replace(/^t\d+_/i,"").replace(/_/g," ").replace(/\s+/g," ").trim().replace(/^./,function(c){return c.toUpperCase();});}
+  function isSkipped(k){return SKIP.indexOf(k)>=0||k.indexOf("gristHelper")===0;}
+  function isEmpty(v){return v===null||v===undefined||v===""||(Array.isArray(v)&&v.length<=1);}
+  function isAttach(v){return Array.isArray(v)&&v[0]==="L";}
+  function keysOf(rec){return Object.keys(rec).filter(function(k){return !isSkipped(k);});}
+  function pickTitleKey(keys){for(var i=0;i<keys.length;i++){if(TITLE_KEYS.indexOf(keys[i].toLowerCase())>=0)return keys[i];}for(var j=0;j<keys.length;j++){if(!isSkipped(keys[j]))return keys[j];}return null;}
+  function recLabel(rec){var k=pickTitleKey(keysOf(rec));var v=k?rec[k]:null;return (v&&String(v).trim())?String(v):("Ligne "+rec.id);}
+  function saveOpts(){try{if(grist.setOptions)grist.setOptions({title:document.getElementById("title").value,intro:document.getElementById("intro").value,mode:document.getElementById("mode").value,selected:Object.keys(selected).filter(function(k){return selected[k];}).map(Number)});}catch(e){}}
+  function buildPicker(){
+    var picker=document.getElementById("picker"), opts=document.getElementById("opts");
+    if(document.getElementById("mode").value!=="selection"){picker.style.display="none";return;}
+    picker.style.display="block"; opts.innerHTML="";
+    allRecords.forEach(function(rec){
+      var lab=document.createElement("label");
+      var cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!selected[rec.id];
+      cb.addEventListener("change",function(){selected[rec.id]=cb.checked;saveOpts();render();});
+      var sp=document.createElement("span"); sp.textContent=recLabel(rec);
+      lab.appendChild(cb); lab.appendChild(sp); opts.appendChild(lab);
+    });
+  }
+  async function renderAttachment(ids){
+    var frag=document.createElement("div"); frag.className="imgwrap"; var shown=false;
+    for(var i=1;i<ids.length;i++){
+      var url=null;
+      try{if(grist.docApi&&typeof grist.docApi.getAttachmentURL==="function"){url=await grist.docApi.getAttachmentURL(ids[i]);}}catch(e){url=null;}
+      if(url){var im=document.createElement("img");im.src=url;im.alt="Image";frag.appendChild(im);shown=true;}
+    }
+    if(!shown){var z=document.createElement("div");z.className="imgzone";z.textContent="Image insérée dans Grist (s'affiche ici en accès complet au document).";return z;}
+    return frag;
+  }
+  async function sectionFromRecord(rec){
+    var sec=document.createElement("div"); sec.className="section";
+    var keys=keysOf(rec); var titleKey=pickTitleKey(keys);
+    var h=document.createElement("h3"); h.textContent=titleKey?(rec[titleKey]||prettify(titleKey)):"Élément"; sec.appendChild(h);
+    for(var i=0;i<keys.length;i++){
+      var k=keys[i]; if(k===titleKey) continue;
+      var v=rec[k]; if(isEmpty(v)) continue;
+      if(isAttach(v)){var w=document.createElement("div");w.className="field";var kk=document.createElement("div");kk.className="k";kk.textContent=prettify(k);w.appendChild(kk);w.appendChild(await renderAttachment(v));sec.appendChild(w);continue;}
+      var f=document.createElement("div"); f.className="field";
+      var kEl=document.createElement("div"); kEl.className="k"; kEl.textContent=prettify(k);
+      var vEl=document.createElement("div"); vEl.className="v"; vEl.textContent=String(v);
+      f.appendChild(kEl); f.appendChild(vEl); sec.appendChild(f);
+    }
+    return sec;
+  }
+  function recordsToRender(){
+    var mode=document.getElementById("mode").value;
+    if(mode==="record") return currentRecord?[currentRecord]:[];
+    if(mode==="table") return allRecords;
+    return allRecords.filter(function(r){return selected[r.id];});
+  }
+  async function render(){
+    buildPicker();
+    var page=document.getElementById("page");
+    var titleOverride=document.getElementById("title").value.trim();
+    var intro=document.getElementById("intro").value.trim();
+    var recs=recordsToRender();
+    page.innerHTML="";
+    var head=document.createElement("div"); head.className="head";
+    var brand=document.createElement("div"); brand.className="brand";
+    var logo=document.createElement("img"); logo.src="WUBO-logo.png"; logo.alt="Wubo"; brand.appendChild(logo);
+    var meta=document.createElement("div"); meta.className="meta";
+    var d=new Date(); var mm=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+    meta.innerHTML="Document généré depuis Grist<br/>"+d.getDate()+" "+mm[d.getMonth()]+" "+d.getFullYear();
+    head.appendChild(brand); head.appendChild(meta); page.appendChild(head);
+    var t=document.createElement("div"); t.className="doctitle"; t.textContent=titleOverride||prettify(tableId)||"Document"; page.appendChild(t);
+    if(intro){var ip=document.createElement("div");ip.className="intro";ip.textContent=intro;page.appendChild(ip);}
+    var sub=document.createElement("div"); sub.className="docsub"; sub.textContent=recs.length+" élément"+(recs.length>1?"s":"")+" · "+(prettify(tableId)||"table"); page.appendChild(sub);
+    if(!recs.length){var e=document.createElement("div");e.className="empty";e.textContent="Aucune ligne sélectionnée. Coche des lignes ci-dessus, ou choisis Table entière.";page.appendChild(e);return;}
+    for(var i=0;i<recs.length;i++){page.appendChild(await sectionFromRecord(recs[i]));}
+    var foot=document.createElement("div"); foot.className="foot";
+    foot.innerHTML="<span>Wubo · Strasbourg</span><span>Source : Grist · "+(tableId||"")+"</span><span>Généré le "+d.toLocaleDateString("fr-FR")+"</span>";
+    page.appendChild(foot);
+  }
+  document.getElementById("print").addEventListener("click",function(){window.print();});
+  document.getElementById("reload").addEventListener("click",render);
+  document.getElementById("mode").addEventListener("change",function(){saveOpts();render();});
+  document.getElementById("title").addEventListener("input",function(){saveOpts();render();});
+  document.getElementById("intro").addEventListener("input",function(){saveOpts();render();});
+  document.getElementById("all").addEventListener("click",function(){allRecords.forEach(function(r){selected[r.id]=true;});saveOpts();render();});
+  document.getElementById("none").addEventListener("click",function(){selected={};saveOpts();render();});
+  if(typeof grist==="undefined"){
+    document.getElementById("page").innerHTML='<div class="empty">Ouvre cette page comme widget personnalisé dans Grist (Ajouter une section, Custom, URL), accès Full document access.</div>';
+    return;
+  }
+  grist.ready({requiredAccess:"full"});
+  grist.onRecords(function(records){ allRecords=records||[]; render(); });
+  grist.onRecord(function(record){ currentRecord=record; if(document.getElementById("mode").value==="record") render(); });
+  if(grist.onOptions){ grist.onOptions(function(options){
+    if(optsLoaded||!options) return; optsLoaded=true;
+    if(options.title) document.getElementById("title").value=options.title;
+    if(options.intro) document.getElementById("intro").value=options.intro;
+    if(options.mode) document.getElementById("mode").value=options.mode;
+    if(Array.isArray(options.selected)) options.selected.forEach(function(id){selected[id]=true;});
+    render();
+  }); }
+  try{ grist.getTable&&grist.getTable().getTableId().then(function(id){tableId=id;render();}); }catch(e){}
+})();
+</script>
+</body>
+</html>
