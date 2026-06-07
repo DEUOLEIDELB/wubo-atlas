@@ -13,51 +13,227 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:#ECECE9;font-family:var(--sans);color:var(--ink)}
-  .bar{position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;justify-content:flex-end;padding:10px 14px;background:#fff;border-bottom:1px solid #DEDEDE}
+  .bar{position:sticky;top:0;z-index:5;display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 14px;background:#fff;border-bottom:1px solid #DEDEDE}
+  .bar .info{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar .actions{display:flex;gap:8px;flex-shrink:0}
   .btn{font:inherit;font-size:13px;font-weight:500;cursor:pointer;border:none;border-radius:6px;padding:7px 14px;background:var(--violet);color:#fff}
   .btn.alt{background:#fff;color:var(--violet);border:1px solid var(--violet-line)}
   .btn:active{transform:scale(.98)}
   .canvas{padding:22px 14px;display:flex;justify-content:center}
   .page{width:794px;min-height:1123px;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:2px;box-shadow:0 1px 6px rgba(0,0,0,.12);padding:54px 60px}
-  .head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid var(--jaune);padding-bottom:10px;margin-bottom:24px}
+  .head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid var(--jaune);padding-bottom:10px;margin-bottom:26px}
   .brand{display:flex;align-items:center}
   .brand img{height:42px;width:auto;display:block}
   .meta{font-size:11px;color:var(--hint);text-align:right;line-height:1.5}
+
+  /* Layout KV : titre rubrique + corps + side */
+  .kv{margin:0 0 22px;break-inside:avoid}
+  .kv .ttl{font-size:14px;font-weight:600;color:var(--violet);margin:0 0 6px;padding-bottom:4px;border-bottom:1px solid var(--rule);text-transform:uppercase;letter-spacing:.4px}
+  .kv .row{display:grid;grid-template-columns:1fr 200px;gap:18px;align-items:start}
+  .kv .row.full{grid-template-columns:1fr}
+  .kv .body{font-size:13.5px;line-height:1.65;white-space:pre-wrap}
+  .kv .side{font-size:11.5px;color:#444;background:var(--violet-soft);border-left:3px solid var(--violet);padding:8px 10px;border-radius:0 4px 4px 0;line-height:1.5;white-space:pre-wrap}
+
+  /* Layout CARD : titre + sous-titre + attributs */
+  .card{margin:0 0 20px;break-inside:avoid;border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+  .card .hd{background:var(--violet-soft);padding:9px 12px;border-bottom:1px solid var(--rule)}
+  .card .hd .t{font-size:14px;font-weight:600;color:var(--violet);line-height:1.25}
+  .card .hd .st{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .card .bd{padding:11px 12px}
+  .card .attr{margin:0 0 8px}
+  .card .attr:last-child{margin-bottom:0}
+  .card .attr .k{font-size:10.5px;font-weight:600;color:var(--violet);text-transform:uppercase;letter-spacing:.4px;margin-bottom:1px}
+  .card .attr .v{font-size:13px;line-height:1.55;white-space:pre-wrap}
+
+  /* Fallback générique */
   .section{margin:0 0 18px;break-inside:avoid}
   .section h3{font-size:14px;font-weight:600;color:var(--violet);margin:0 0 7px;padding-bottom:4px;border-bottom:1px solid var(--rule)}
   .field{margin:0 0 9px}
   .field .k{font-size:11px;font-weight:600;color:var(--violet);text-transform:uppercase;letter-spacing:.5px}
   .field .v{font-size:13.5px;line-height:1.65;white-space:pre-wrap;margin-top:1px}
-  .imgwrap{margin:10px 0}
+
+  .imgwrap{margin:6px 0}
   .imgwrap img{max-width:100%;border:1px solid var(--rule);border-radius:6px;display:block}
-  .imgzone{border:1.5px dashed var(--violet-line);background:var(--violet-soft);border-radius:6px;padding:16px;text-align:center;color:var(--violet);font-size:12px}
+  .imgzone{border:1.5px dashed var(--violet-line);background:var(--violet-soft);border-radius:6px;padding:10px;text-align:center;color:var(--violet);font-size:11px}
   .foot{display:flex;justify-content:space-between;border-top:1px solid var(--rule);margin-top:30px;padding-top:8px;font-size:10.5px;color:var(--hint)}
   .empty{color:var(--muted);font-size:14px;padding:40px;text-align:center}
-  @media print{html,body{background:#fff}.bar{display:none}.canvas{padding:0}.page{width:auto;min-height:auto;box-shadow:none;border:none;border-radius:0;padding:0}}
+  .err{color:#b00;font-size:12px;padding:14px;background:#fff5f5;border:1px solid #f0caca;border-radius:6px;margin:10px 0;white-space:pre-wrap;font-family:Menlo,Consolas,monospace}
+
+  @media print{html,body{background:#fff}.bar{display:none}.canvas{padding:0}.page{width:auto;min-height:auto;box-shadow:none;border:none;border-radius:0;padding:0}.card{border:1px solid #ddd}}
   @page{size:A4;margin:16mm}
 </style>
 </head>
 <body>
   <div class="bar">
-    <button class="btn alt" id="reload">Rafraîchir</button>
-    <button class="btn" id="print">Imprimer / PDF A4</button>
+    <div class="info" id="info">Connexion à Grist…</div>
+    <div class="actions">
+      <button class="btn alt" id="reload">Rafraîchir</button>
+      <button class="btn" id="print">Imprimer / PDF A4</button>
+    </div>
   </div>
   <div class="canvas"><div class="page" id="page"></div></div>
 <script>
 (function(){
   "use strict";
-  var allRecords=[], tableId="";
-  var SKIP=["id","manualSort"];
-  var TITLE_KEYS=["rubrique","titre","title","nom","name","concurrent","kit","bloc","metrique","risque","pilier","audience","sous_segment","source","indicateur","framework","objectif","poste"];
-  function prettify(id){return String(id).replace(/^t\d+_/i,"").replace(/_/g," ").replace(/\s+/g," ").trim().replace(/^./,function(c){return c.toUpperCase();});}
-  function isSkipped(k){return SKIP.indexOf(k)>=0||k.indexOf("gristHelper")===0;}
+
+  // Mapping ID Grist → label affiché, par table. Layout = "kv" ou "card".
+  // ID Grist (ex "Chiffres_cles") ≠ label affiché ("Chiffres clés").
+  var TABLE_CONFIG = {
+    "T01_identite": {
+      label: "Identité",
+      layout: "kv",
+      title: ["Rubrique","Rubrique"],
+      body:  ["Contenu","Contenu"]
+    },
+    "T02_ecosysteme_produit": {
+      label: "Écosystème produit",
+      layout: "card",
+      title: ["Pilier","Pilier"],
+      fields: [
+        ["Description","Description"],
+        ["Role_pedagogique","Rôle pédagogique"],
+        ["Exemples_concrets","Exemples concrets"],
+        ["Argument_parent","Argument parent"]
+      ]
+    },
+    "T03_univers_narratif": {
+      label: "Univers narratif",
+      layout: "card",
+      title: ["Element","Élément"],
+      subtitle: ["Type","Type"],
+      fields: [
+        ["Description","Description"],
+        ["Role_dans_le_produit","Rôle dans le produit"]
+      ]
+    },
+    "T04_blocs_modulaires": {
+      label: "Blocs modulaires",
+      layout: "card",
+      title: ["Bloc","Bloc"],
+      subtitle: ["Audience","Audience"],
+      fields: [
+        ["Formulation","Formulation"],
+        ["Usage_recommande","Usage recommandé"]
+      ]
+    },
+    "T05_pitchs": {
+      label: "Pitchs",
+      layout: "card",
+      title: ["Type_de_pitch","Type de pitch"],
+      subtitle: ["Duree_Format","Durée / Format"],
+      fields: [
+        ["Formulation_complete","Formulation complète"],
+        ["Contexte_d_usage","Contexte d'usage"]
+      ]
+    },
+    "T06_business_model": {
+      label: "Business model",
+      layout: "kv",
+      title: ["Rubrique","Rubrique"],
+      body:  ["Detail","Détail"],
+      side:  ["Chiffres_cles","Chiffres clés"]
+    },
+    "T07_concurrence": {
+      label: "Concurrence",
+      layout: "card",
+      title: ["Concurrent","Concurrent"],
+      subtitle: ["Type","Type"],
+      fields: [
+        ["Famille","Famille"],
+        ["Presence_FR","Présence FR"],
+        ["Prix","Prix"],
+        ["Forces","Forces"],
+        ["Faiblesses","Faiblesses"],
+        ["Positionnement_Wubo_vs","Positionnement Wubo vs"]
+      ]
+    },
+    "T08_equipe_legal": {
+      label: "Équipe & légal",
+      layout: "kv",
+      title: ["Rubrique","Rubrique"],
+      body:  ["Detail","Détail"],
+      side:  ["Role_Statut","Rôle / Statut"]
+    },
+    "T09_audiences": {
+      label: "Audiences",
+      layout: "card",
+      title: ["Audience","Audience"],
+      subtitle: ["Sous_segment","Sous-segment"],
+      fields: [
+        ["Motivation_principale","Motivation principale"],
+        ["Frein_principal","Frein principal"],
+        ["Argument_massue","Argument massue"],
+        ["Canal_prioritaire","Canal prioritaire"],
+        ["Budget_moyen","Budget moyen"],
+        ["Profil_com","Profil com"]
+      ]
+    },
+    "T10_kits_roadmap": {
+      label: "Kits & roadmap",
+      layout: "card",
+      title: ["Kit","Kit"],
+      subtitle: ["Nom_capsule","Nom capsule"],
+      fields: [
+        ["Statut","Statut"],
+        ["Thematique","Thématique"],
+        ["Notions_cles","Notions clés"],
+        ["Mascotte","Mascotte"],
+        ["COGS_cible_","COGS cible (€)"],
+        ["Prix_HT_","Prix HT (€)"],
+        ["Marge_brute_","Marge brute %"],
+        ["Lancement_prevu","Lancement prévu"]
+      ]
+    },
+    "T11_traction_metriques": {
+      label: "Traction & métriques",
+      layout: "card",
+      title: ["Metrique","Métrique"],
+      subtitle: ["Categorie","Catégorie"],
+      fields: [
+        ["Valeur_actuelle_Preuve","Valeur actuelle / Preuve"],
+        ["Objectif_cible","Objectif cible"],
+        ["Source","Source"]
+      ]
+    },
+    "T12_canvas_frameworks": {
+      label: "Canvas & frameworks",
+      layout: "card",
+      title: ["Framework","Framework"],
+      subtitle: ["Bloc","Bloc"],
+      fields: [
+        ["Contenu","Contenu"]
+      ]
+    },
+    "T13_risques": {
+      label: "Risques",
+      layout: "card",
+      title: ["Risque","Risque"],
+      subtitle: ["Categorie","Catégorie"],
+      fields: [
+        ["Probabilite","Probabilité"],
+        ["Impact","Impact"],
+        ["Score","Score (PxI)"],
+        ["Mitigation","Plan de mitigation"],
+        ["Owner","Owner"],
+        ["Statut","Statut"]
+      ]
+    }
+  };
+
+  var GLOBAL_SKIP = /^(Notes|manualSort|id|gristHelper)/i;
+  var allRecords=[], tableId="", lastError="";
+
+  function el(tag,cls,text){var n=document.createElement(tag);if(cls)n.className=cls;if(text!=null)n.textContent=text;return n;}
+  function clear(n){while(n.firstChild)n.removeChild(n.firstChild);}
   function isEmpty(v){return v===null||v===undefined||v===""||(Array.isArray(v)&&v.length<=1);}
   function isAttach(v){return Array.isArray(v)&&v[0]==="L";}
-  function keysOf(rec){return Object.keys(rec).filter(function(k){return !isSkipped(k);});}
-  function pickTitleKey(keys){for(var i=0;i<keys.length;i++){if(TITLE_KEYS.indexOf(keys[i].toLowerCase())>=0)return keys[i];}for(var j=0;j<keys.length;j++){if(!isSkipped(keys[j]))return keys[j];}return null;}
-  function clear(node){while(node.firstChild)node.removeChild(node.firstChild);}
-  function el(tag,cls,text){var n=document.createElement(tag);if(cls)n.className=cls;if(text!=null)n.textContent=text;return n;}
-  function emptyMsg(text){var e=el("div","empty",text);return e;}
+  function fmtNum(v,id){
+    if(typeof v!=="number") return String(v);
+    if(/marge|pct|percent|%/i.test(id)) return (v*100).toFixed(1).replace(/\.0$/,"")+" %";
+    if(Number.isInteger(v)) return String(v);
+    return v.toLocaleString("fr-FR",{maximumFractionDigits:2});
+  }
+
   async function renderAttachment(ids){
     var frag=el("div","imgwrap"); var shown=false;
     for(var i=1;i<ids.length;i++){
@@ -65,27 +241,99 @@
       try{if(grist.docApi&&typeof grist.docApi.getAttachmentURL==="function"){url=await grist.docApi.getAttachmentURL(ids[i]);}}catch(e){url=null;}
       if(url){var im=document.createElement("img");im.src=url;im.alt="Image";frag.appendChild(im);shown=true;}
     }
-    if(!shown){return el("div","imgzone","Image insérée dans Grist (s'affiche ici en accès complet au document).");}
+    if(!shown) return el("div","imgzone","Image insérée dans Grist");
     return frag;
   }
-  async function sectionFromRecord(rec){
+
+  function readVal(rec,id){
+    if(rec[id]!==undefined) return rec[id];
+    // fallback case-insensitive
+    var keys=Object.keys(rec);
+    for(var i=0;i<keys.length;i++){if(keys[i].toLowerCase()===id.toLowerCase())return rec[keys[i]];}
+    return undefined;
+  }
+
+  async function renderField(rec, idLabel){
+    var id=idLabel[0], label=idLabel[1];
+    var v=readVal(rec,id);
+    if(isEmpty(v)) return null;
+    var f=el("div","attr");
+    f.appendChild(el("div","k",label));
+    if(isAttach(v)){f.appendChild(await renderAttachment(v));}
+    else if(typeof v==="number"){f.appendChild(el("div","v",fmtNum(v,id)));}
+    else{f.appendChild(el("div","v",String(v)));}
+    return f;
+  }
+
+  async function renderKV(rec, cfg){
+    var sec=el("div","kv");
+    var t=readVal(rec,cfg.title[0]); if(!t) return null;
+    sec.appendChild(el("div","ttl",String(t)));
+    var hasSide=!!(cfg.side && !isEmpty(readVal(rec,cfg.side[0])));
+    var row=el("div","row"+(hasSide?"":" full"));
+    var body=el("div","body",String(readVal(rec,cfg.body[0])||""));
+    row.appendChild(body);
+    if(hasSide){
+      var side=readVal(rec,cfg.side[0]);
+      row.appendChild(el("div","side",String(side)));
+    }
+    sec.appendChild(row);
+    return sec;
+  }
+
+  async function renderCard(rec, cfg){
+    var t=readVal(rec,cfg.title[0]); if(!t) return null;
+    var card=el("div","card");
+    var hd=el("div","hd");
+    hd.appendChild(el("div","t",String(t)));
+    if(cfg.subtitle){
+      var st=readVal(rec,cfg.subtitle[0]);
+      if(!isEmpty(st)) hd.appendChild(el("div","st",String(st)));
+    }
+    card.appendChild(hd);
+    var bd=el("div","bd"); var has=false;
+    for(var i=0;i<cfg.fields.length;i++){
+      var f=await renderField(rec, cfg.fields[i]);
+      if(f){bd.appendChild(f); has=true;}
+    }
+    if(!has){bd.appendChild(el("div","attr",""));}
+    card.appendChild(bd);
+    return card;
+  }
+
+  async function renderAuto(rec){
     var sec=el("div","section");
-    var keys=keysOf(rec); var titleKey=pickTitleKey(keys);
-    sec.appendChild(el("h3",null,titleKey?(rec[titleKey]||prettify(titleKey)):"Élément"));
-    for(var i=0;i<keys.length;i++){
-      var k=keys[i]; if(k===titleKey) continue;
-      var v=rec[k]; if(isEmpty(v)) continue;
+    var keys=Object.keys(rec).filter(function(k){return !GLOBAL_SKIP.test(k);});
+    var title=keys[0]&&readVal(rec,keys[0]);
+    sec.appendChild(el("h3",null,title?String(title):"Élément"));
+    for(var i=1;i<keys.length;i++){
+      var k=keys[i]; var v=rec[k];
+      if(isEmpty(v)) continue;
       var f=el("div","field");
-      f.appendChild(el("div","k",prettify(k)));
+      f.appendChild(el("div","k",k.replace(/_/g," ")));
       if(isAttach(v)){f.appendChild(await renderAttachment(v));}
+      else if(typeof v==="number"){f.appendChild(el("div","v",fmtNum(v,k)));}
       else{f.appendChild(el("div","v",String(v)));}
       sec.appendChild(f);
     }
     return sec;
   }
+
+  function updateInfo(){
+    var info=document.getElementById("info");
+    var cfg=TABLE_CONFIG[tableId];
+    var label=cfg?cfg.label:(tableId||"(table inconnue)");
+    var n=allRecords.length;
+    var txt=label+" · "+n+" ligne"+(n>1?"s":"")+(cfg?"":" · layout auto");
+    if(lastError) txt+=" · erreur : "+lastError;
+    info.textContent=txt;
+  }
+
   async function render(){
+    updateInfo();
     var page=document.getElementById("page");
     clear(page);
+
     var head=el("div","head");
     var brand=el("div","brand");
     var logo=document.createElement("img"); logo.src="WUBO-logo.png"; logo.alt="Wubo"; brand.appendChild(logo);
@@ -96,25 +344,56 @@
     meta.appendChild(document.createElement("br"));
     meta.appendChild(document.createTextNode(d.getDate()+" "+mm[d.getMonth()]+" "+d.getFullYear()));
     head.appendChild(brand); head.appendChild(meta); page.appendChild(head);
-    if(!allRecords.length){page.appendChild(emptyMsg("Aucune ligne dans cette table."));return;}
-    for(var i=0;i<allRecords.length;i++){page.appendChild(await sectionFromRecord(allRecords[i]));}
+
+    if(lastError){
+      page.appendChild(el("div","err","Erreur de rendu : "+lastError));
+    }
+
+    if(!allRecords.length){
+      page.appendChild(el("div","empty","Aucune ligne dans cette table (ou widget pas encore lié à une table)."));
+      return;
+    }
+
+    var cfg=TABLE_CONFIG[tableId];
+    try{
+      for(var i=0;i<allRecords.length;i++){
+        var node=null;
+        if(cfg && cfg.layout==="kv") node=await renderKV(allRecords[i], cfg);
+        else if(cfg && cfg.layout==="card") node=await renderCard(allRecords[i], cfg);
+        else node=await renderAuto(allRecords[i]);
+        if(node) page.appendChild(node);
+      }
+    }catch(e){
+      lastError=(e && e.message)||String(e);
+      page.appendChild(el("div","err","Erreur pendant le rendu : "+lastError));
+      updateInfo();
+    }
+
     var foot=el("div","foot");
     foot.appendChild(el("span",null,"Wubo · Strasbourg"));
-    foot.appendChild(el("span",null,"Source : Grist · "+(tableId||"")));
+    foot.appendChild(el("span",null,"Source : Grist · "+(cfg?cfg.label:tableId)));
     foot.appendChild(el("span",null,"Généré le "+d.toLocaleDateString("fr-FR")));
     page.appendChild(foot);
   }
+
   document.getElementById("print").addEventListener("click",function(){window.print();});
-  document.getElementById("reload").addEventListener("click",render);
-  var page=document.getElementById("page");
+  document.getElementById("reload").addEventListener("click",function(){lastError="";render();});
+
   if(typeof grist==="undefined"){
-    page.appendChild(emptyMsg("Ouvre cette page comme widget personnalisé dans Grist (Ajouter une section, Custom, URL), accès Full document access."));
+    document.getElementById("info").textContent="Hors Grist · ouvre cette URL comme Custom Widget";
+    document.getElementById("page").appendChild(el("div","empty","Ouvre cette page comme widget personnalisé dans Grist (Custom + Full document access)."));
     return;
   }
-  page.appendChild(emptyMsg("Connexion à Grist…"));
-  grist.ready({requiredAccess:"full"});
-  grist.onRecords(function(records){ allRecords=records||[]; render(); });
-  try{ grist.getTable&&grist.getTable().getTableId().then(function(id){tableId=id;render();}); }catch(e){}
+
+  try{ grist.ready({requiredAccess:"full"}); }catch(e){ lastError="grist.ready : "+e.message; }
+  grist.onRecords(function(records){
+    try{ allRecords=records||[]; render(); }
+    catch(e){ lastError="onRecords : "+e.message; updateInfo(); }
+  });
+  try{
+    grist.getTable && grist.getTable().getTableId().then(function(id){tableId=id;render();})
+      .catch(function(e){lastError="getTableId : "+e.message;updateInfo();});
+  }catch(e){ lastError="getTable : "+e.message; updateInfo(); }
 })();
 </script>
 </body>
