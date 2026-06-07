@@ -60,35 +60,21 @@ Pour vérifier : ouvre cette URL dans un onglet. Tu dois voir une page qui dit "
 
 ---
 
-## Étape 4 : ajouter le widget dans Grist
+## Étape 4 : ajouter le widget dans chaque table
 
-1. Ouvre ton document Grist (Bible ou Pilotage), va sur la **table** que tu veux présenter (ex. la table identité pour un Golden Circle).
+Pour chaque table que tu veux pouvoir présenter en A4 :
+
+1. Ouvre la **table** dans Grist.
 2. Bouton **Add New** (ou le "+") > **Add Widget to Page**.
 3. Type de widget : **Custom**.
 4. Dans le panneau de droite, champ **URL** : colle `https://deuoleidelb.github.io/wubo-atlas/`
 5. Juste en dessous, **Access level** : choisis **Full document access** (indispensable, sinon pas d'images et accès données bloqué).
-6. Valide. Le widget s'affiche en page A4.
+6. Valide. Le widget s'affiche en page A4 avec toutes les lignes de la table.
 
----
+Le widget n'a que deux boutons :
 
-## Étape 5 : créer un document à présenter
-
-Dans la barre du widget :
-
-- **Lignes** : choisis `Sélection`, puis coche en haut les lignes à inclure.
-- **Titre** : donne le nom du document (ex. "Golden Circle Wubo").
-- **Intro** : une phrase d'introduction (optionnel).
-- **Imprimer / PDF A4** : pour exporter en PDF propre.
-
-Le widget retient ta config (titre, intro, sélection) pour cette section. Tu peux donc créer plusieurs sections Atlas, une par document :
-
-| Document | Table | Lignes à cocher |
-|---|---|---|
-| Golden Circle | identité (T01) | Golden Circle WHY / HOW / WHAT |
-| Modèle économique | business model (T06) | les rubriques du modèle |
-| Structure de coût | business model (T06) | la rubrique coûts et prix |
-| Certifications | risques (T13) ou roadmap (T10) | les lignes certification |
-| Positionnement | identité (T01) | Formule produit, Cap éditorial, Proposition de valeur |
+- **Rafraîchir** : recharge la page après une modif dans la table.
+- **Imprimer / PDF A4** : ouvre le dialogue système pour imprimer ou enregistrer en PDF A4 propre.
 
 ---
 
