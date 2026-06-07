@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Wubo · Lecture A4</title>
 <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <style>
   :root{
     --violet:#5914D0; --violet-soft:#F7F4FE; --violet-line:#C9B8F0;
@@ -13,53 +14,88 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:#ECECE9;font-family:var(--sans);color:var(--ink)}
+
   .bar{position:sticky;top:0;z-index:5;display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 14px;background:#fff;border-bottom:1px solid #DEDEDE}
   .bar .info{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .bar .actions{display:flex;gap:8px;flex-shrink:0}
   .btn{font:inherit;font-size:13px;font-weight:500;cursor:pointer;border:none;border-radius:6px;padding:7px 14px;background:var(--violet);color:#fff}
   .btn.alt{background:#fff;color:var(--violet);border:1px solid var(--violet-line)}
   .btn:active{transform:scale(.98)}
+
   .canvas{padding:22px 14px;display:flex;justify-content:center}
-  .page{width:794px;min-height:1123px;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:2px;box-shadow:0 1px 6px rgba(0,0,0,.12);padding:54px 60px}
+  .page{width:794px;min-height:1123px;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:2px;box-shadow:0 1px 6px rgba(0,0,0,.12);padding:54px 60px;display:flex;flex-direction:column}
   .head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid var(--jaune);padding-bottom:10px;margin-bottom:26px}
   .brand{display:flex;align-items:center}
   .brand img{height:42px;width:auto;display:block}
   .meta{font-size:11px;color:var(--hint);text-align:right;line-height:1.5}
 
-  /* Layout KV : titre rubrique + corps + side */
-  .kv{margin:0 0 22px;break-inside:avoid}
-  .kv .ttl{font-size:14px;font-weight:600;color:var(--violet);margin:0 0 6px;padding-bottom:4px;border-bottom:1px solid var(--rule);text-transform:uppercase;letter-spacing:.4px}
-  .kv .row{display:grid;grid-template-columns:1fr 200px;gap:18px;align-items:start}
-  .kv .row.full{grid-template-columns:1fr}
-  .kv .body{font-size:13.5px;line-height:1.65;white-space:pre-wrap}
-  .kv .side{font-size:11.5px;color:#444;background:var(--violet-soft);border-left:3px solid var(--violet);padding:8px 10px;border-radius:0 4px 4px 0;line-height:1.5;white-space:pre-wrap}
+  .rows{display:flex;flex-direction:column;gap:14px;flex:1}
+  .row{display:flex;gap:14px;align-items:stretch;break-inside:avoid;min-height:24px;position:relative}
+  .row.empty-drop{min-height:38px;border:2px dashed var(--violet-line);border-radius:6px;background:transparent;align-items:center;justify-content:center;color:var(--violet);font-size:11px;opacity:.55;transition:opacity .15s,background .15s}
+  .row.empty-drop::before{content:"glisse un bloc ici pour créer une nouvelle ligne"}
+  .row.empty-drop:hover,.row.empty-drop.drop-over{opacity:1;background:var(--violet-soft)}
+  .row.sortable-ghost{opacity:.3}
 
-  /* Layout CARD : titre + sous-titre + attributs */
-  .card{margin:0 0 20px;break-inside:avoid;border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+  .rowhandle{position:absolute;left:-20px;top:8px;width:14px;height:24px;display:flex;align-items:center;justify-content:center;color:var(--hint);cursor:grab;border-radius:3px;font-size:14px;opacity:0;transition:opacity .15s}
+  .row:hover .rowhandle{opacity:1}
+  .rowhandle:hover{background:var(--violet-soft);color:var(--violet)}
+  .rowhandle:active{cursor:grabbing}
+
+  .block{flex:1;min-width:0;position:relative;background:#fff;border-radius:6px}
+  .block.sortable-ghost{opacity:.3}
+  .block .ctrls{position:absolute;top:-4px;right:-4px;display:none;gap:2px;z-index:3;background:#fff;border:1px solid var(--rule);border-radius:4px;padding:2px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .block:hover .ctrls{display:flex}
+  .block .ctrls button{width:22px;height:22px;font-size:13px;line-height:1;padding:0;background:transparent;border:none;color:var(--muted);cursor:pointer;border-radius:3px}
+  .block .ctrls button:hover{background:var(--violet-soft);color:var(--violet)}
+
+  /* Layout KV */
+  .kv .ttl{font-size:14px;font-weight:600;color:var(--violet);margin:0 0 6px;padding-bottom:4px;border-bottom:1px solid var(--rule);text-transform:uppercase;letter-spacing:.4px}
+  .kv .grid{display:grid;grid-template-columns:1fr 180px;gap:14px;align-items:start}
+  .kv .grid.full{grid-template-columns:1fr}
+  .kv .body{font-size:13.5px;line-height:1.6;white-space:pre-wrap;outline:none}
+  .kv .side{font-size:11.5px;color:#444;background:var(--violet-soft);border-left:3px solid var(--violet);padding:8px 10px;border-radius:0 4px 4px 0;line-height:1.5;white-space:pre-wrap;outline:none}
+
+  /* Layout CARD */
+  .card{border:1px solid var(--rule);border-radius:6px;overflow:hidden;height:100%}
   .card .hd{background:var(--violet-soft);padding:9px 12px;border-bottom:1px solid var(--rule)}
-  .card .hd .t{font-size:14px;font-weight:600;color:var(--violet);line-height:1.25}
-  .card .hd .st{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .card .hd .t{font-size:14px;font-weight:600;color:var(--violet);line-height:1.25;outline:none}
+  .card .hd .st{font-size:11.5px;color:var(--muted);margin-top:2px;outline:none}
   .card .bd{padding:11px 12px}
   .card .attr{margin:0 0 8px}
   .card .attr:last-child{margin-bottom:0}
   .card .attr .k{font-size:10.5px;font-weight:600;color:var(--violet);text-transform:uppercase;letter-spacing:.4px;margin-bottom:1px}
-  .card .attr .v{font-size:13px;line-height:1.55;white-space:pre-wrap}
+  .card .attr .v{font-size:13px;line-height:1.55;white-space:pre-wrap;outline:none}
+
+  /* Inline edit feedback */
+  [contenteditable="plaintext-only"]:focus,[contenteditable="true"]:focus{background:#FFFCE5;box-shadow:0 0 0 2px var(--jaune);border-radius:2px}
+  [contenteditable]{cursor:text}
+
+  /* Block IMAGE */
+  .imgblock{border:1px solid var(--rule);border-radius:6px;overflow:hidden;display:flex;flex-direction:column;background:#fff;height:100%}
+  .imgblock img{width:100%;height:auto;display:block;max-height:520px;object-fit:contain;background:#FAFAFA}
+  .imgblock .cap{padding:6px 10px;font-size:11px;color:var(--muted);text-align:center;outline:none}
 
   /* Fallback générique */
-  .section{margin:0 0 18px;break-inside:avoid}
+  .section{break-inside:avoid}
   .section h3{font-size:14px;font-weight:600;color:var(--violet);margin:0 0 7px;padding-bottom:4px;border-bottom:1px solid var(--rule)}
   .field{margin:0 0 9px}
   .field .k{font-size:11px;font-weight:600;color:var(--violet);text-transform:uppercase;letter-spacing:.5px}
-  .field .v{font-size:13.5px;line-height:1.65;white-space:pre-wrap;margin-top:1px}
+  .field .v{font-size:13.5px;line-height:1.65;white-space:pre-wrap;outline:none}
 
-  .imgwrap{margin:6px 0}
-  .imgwrap img{max-width:100%;border:1px solid var(--rule);border-radius:6px;display:block}
-  .imgzone{border:1.5px dashed var(--violet-line);background:var(--violet-soft);border-radius:6px;padding:10px;text-align:center;color:var(--violet);font-size:11px}
   .foot{display:flex;justify-content:space-between;border-top:1px solid var(--rule);margin-top:30px;padding-top:8px;font-size:10.5px;color:var(--hint)}
   .empty{color:var(--muted);font-size:14px;padding:40px;text-align:center}
   .err{color:#b00;font-size:12px;padding:14px;background:#fff5f5;border:1px solid #f0caca;border-radius:6px;margin:10px 0;white-space:pre-wrap;font-family:Menlo,Consolas,monospace}
 
-  @media print{html,body{background:#fff}.bar{display:none}.canvas{padding:0}.page{width:auto;min-height:auto;box-shadow:none;border:none;border-radius:0;padding:0}.card{border:1px solid #ddd}}
+  @media print{
+    html,body{background:#fff}
+    .bar{display:none}
+    .canvas{padding:0}
+    .page{width:auto;min-height:auto;box-shadow:none;border:none;border-radius:0;padding:0}
+    .row.empty-drop{display:none}
+    .rowhandle{display:none}
+    .block .ctrls{display:none!important}
+    [contenteditable]:focus{background:none;box-shadow:none}
+  }
   @page{size:A4;margin:16mm}
 </style>
 </head>
@@ -67,333 +103,409 @@
   <div class="bar">
     <div class="info" id="info">Connexion à Grist…</div>
     <div class="actions">
+      <input type="file" id="fileinp" accept="image/*" style="display:none"/>
+      <button class="btn alt" id="addimg">+ Image</button>
+      <button class="btn alt" id="reset" title="Réinitialiser la mise en page (n'efface aucune donnée Grist)">Réinitialiser</button>
       <button class="btn alt" id="reload">Rafraîchir</button>
       <button class="btn" id="print">Imprimer / PDF A4</button>
     </div>
   </div>
-  <div class="canvas"><div class="page" id="page"></div></div>
+  <div class="canvas">
+    <div class="page" id="page">
+      <div class="head">
+        <div class="brand"><img src="WUBO-logo.png" alt="Wubo"/></div>
+        <div class="meta" id="meta"></div>
+      </div>
+      <div class="rows" id="rows"></div>
+      <div class="foot" id="foot"></div>
+    </div>
+  </div>
 <script>
 (function(){
   "use strict";
 
-  // Mapping ID Grist → label affiché, par table. Layout = "kv" ou "card".
-  // ID Grist (ex "Chiffres_cles") ≠ label affiché ("Chiffres clés").
   var TABLE_CONFIG = {
-    "T01_identite": {
-      label: "Identité",
-      layout: "kv",
-      title: ["Rubrique","Rubrique"],
-      body:  ["Contenu","Contenu"]
-    },
-    "T02_ecosysteme_produit": {
-      label: "Écosystème produit",
-      layout: "card",
-      title: ["Pilier","Pilier"],
-      fields: [
-        ["Description","Description"],
-        ["Role_pedagogique","Rôle pédagogique"],
-        ["Exemples_concrets","Exemples concrets"],
-        ["Argument_parent","Argument parent"]
-      ]
-    },
-    "T03_univers_narratif": {
-      label: "Univers narratif",
-      layout: "card",
-      title: ["Element","Élément"],
-      subtitle: ["Type","Type"],
-      fields: [
-        ["Description","Description"],
-        ["Role_dans_le_produit","Rôle dans le produit"]
-      ]
-    },
-    "T04_blocs_modulaires": {
-      label: "Blocs modulaires",
-      layout: "card",
-      title: ["Bloc","Bloc"],
-      subtitle: ["Audience","Audience"],
-      fields: [
-        ["Formulation","Formulation"],
-        ["Usage_recommande","Usage recommandé"]
-      ]
-    },
-    "T05_pitchs": {
-      label: "Pitchs",
-      layout: "card",
-      title: ["Type_de_pitch","Type de pitch"],
-      subtitle: ["Duree_Format","Durée / Format"],
-      fields: [
-        ["Formulation_complete","Formulation complète"],
-        ["Contexte_d_usage","Contexte d'usage"]
-      ]
-    },
-    "T06_business_model": {
-      label: "Business model",
-      layout: "kv",
-      title: ["Rubrique","Rubrique"],
-      body:  ["Detail","Détail"],
-      side:  ["Chiffres_cles","Chiffres clés"]
-    },
-    "T07_concurrence": {
-      label: "Concurrence",
-      layout: "card",
-      title: ["Concurrent","Concurrent"],
-      subtitle: ["Type","Type"],
-      fields: [
-        ["Famille","Famille"],
-        ["Presence_FR","Présence FR"],
-        ["Prix","Prix"],
-        ["Forces","Forces"],
-        ["Faiblesses","Faiblesses"],
-        ["Positionnement_Wubo_vs","Positionnement Wubo vs"]
-      ]
-    },
-    "T08_equipe_legal": {
-      label: "Équipe & légal",
-      layout: "kv",
-      title: ["Rubrique","Rubrique"],
-      body:  ["Detail","Détail"],
-      side:  ["Role_Statut","Rôle / Statut"]
-    },
-    "T09_audiences": {
-      label: "Audiences",
-      layout: "card",
-      title: ["Audience","Audience"],
-      subtitle: ["Sous_segment","Sous-segment"],
-      fields: [
-        ["Motivation_principale","Motivation principale"],
-        ["Frein_principal","Frein principal"],
-        ["Argument_massue","Argument massue"],
-        ["Canal_prioritaire","Canal prioritaire"],
-        ["Budget_moyen","Budget moyen"],
-        ["Profil_com","Profil com"]
-      ]
-    },
-    "T10_kits_roadmap": {
-      label: "Kits & roadmap",
-      layout: "card",
-      title: ["Kit","Kit"],
-      subtitle: ["Nom_capsule","Nom capsule"],
-      fields: [
-        ["Statut","Statut"],
-        ["Thematique","Thématique"],
-        ["Notions_cles","Notions clés"],
-        ["Mascotte","Mascotte"],
-        ["COGS_cible_","COGS cible (€)"],
-        ["Prix_HT_","Prix HT (€)"],
-        ["Marge_brute_","Marge brute %"],
-        ["Lancement_prevu","Lancement prévu"]
-      ]
-    },
-    "T11_traction_metriques": {
-      label: "Traction & métriques",
-      layout: "card",
-      title: ["Metrique","Métrique"],
-      subtitle: ["Categorie","Catégorie"],
-      fields: [
-        ["Valeur_actuelle_Preuve","Valeur actuelle / Preuve"],
-        ["Objectif_cible","Objectif cible"],
-        ["Source","Source"]
-      ]
-    },
-    "T12_canvas_frameworks": {
-      label: "Canvas & frameworks",
-      layout: "card",
-      title: ["Framework","Framework"],
-      subtitle: ["Bloc","Bloc"],
-      fields: [
-        ["Contenu","Contenu"]
-      ]
-    },
-    "T13_risques": {
-      label: "Risques",
-      layout: "card",
-      title: ["Risque","Risque"],
-      subtitle: ["Categorie","Catégorie"],
-      fields: [
-        ["Probabilite","Probabilité"],
-        ["Impact","Impact"],
-        ["Score","Score (PxI)"],
-        ["Mitigation","Plan de mitigation"],
-        ["Owner","Owner"],
-        ["Statut","Statut"]
-      ]
-    }
+    "T01_identite":{label:"Identité",layout:"kv",title:["Rubrique","Rubrique"],body:["Contenu","Contenu"]},
+    "T02_ecosysteme_produit":{label:"Écosystème produit",layout:"card",title:["Pilier","Pilier"],fields:[["Description","Description"],["Role_pedagogique","Rôle pédagogique"],["Exemples_concrets","Exemples concrets"],["Argument_parent","Argument parent"]]},
+    "T03_univers_narratif":{label:"Univers narratif",layout:"card",title:["Element","Élément"],subtitle:["Type","Type"],fields:[["Description","Description"],["Role_dans_le_produit","Rôle dans le produit"]]},
+    "T04_blocs_modulaires":{label:"Blocs modulaires",layout:"card",title:["Bloc","Bloc"],subtitle:["Audience","Audience"],fields:[["Formulation","Formulation"],["Usage_recommande","Usage recommandé"]]},
+    "T05_pitchs":{label:"Pitchs",layout:"card",title:["Type_de_pitch","Type de pitch"],subtitle:["Duree_Format","Durée / Format"],fields:[["Formulation_complete","Formulation complète"],["Contexte_d_usage","Contexte d'usage"]]},
+    "T06_business_model":{label:"Business model",layout:"kv",title:["Rubrique","Rubrique"],body:["Detail","Détail"],side:["Chiffres_cles","Chiffres clés"]},
+    "T07_concurrence":{label:"Concurrence",layout:"card",title:["Concurrent","Concurrent"],subtitle:["Type","Type"],fields:[["Famille","Famille"],["Presence_FR","Présence FR"],["Prix","Prix"],["Forces","Forces"],["Faiblesses","Faiblesses"],["Positionnement_Wubo_vs","Positionnement Wubo vs"]]},
+    "T08_equipe_legal":{label:"Équipe & légal",layout:"kv",title:["Rubrique","Rubrique"],body:["Detail","Détail"],side:["Role_Statut","Rôle / Statut"]},
+    "T09_audiences":{label:"Audiences",layout:"card",title:["Audience","Audience"],subtitle:["Sous_segment","Sous-segment"],fields:[["Motivation_principale","Motivation principale"],["Frein_principal","Frein principal"],["Argument_massue","Argument massue"],["Canal_prioritaire","Canal prioritaire"],["Budget_moyen","Budget moyen"],["Profil_com","Profil com"]]},
+    "T10_kits_roadmap":{label:"Kits & roadmap",layout:"card",title:["Kit","Kit"],subtitle:["Nom_capsule","Nom capsule"],fields:[["Statut","Statut"],["Thematique","Thématique"],["Notions_cles","Notions clés"],["Mascotte","Mascotte"],["COGS_cible_","COGS cible (€)"],["Prix_HT_","Prix HT (€)"],["Marge_brute_","Marge brute %"],["Lancement_prevu","Lancement prévu"]]},
+    "T11_traction_metriques":{label:"Traction & métriques",layout:"card",title:["Metrique","Métrique"],subtitle:["Categorie","Catégorie"],fields:[["Valeur_actuelle_Preuve","Valeur actuelle / Preuve"],["Objectif_cible","Objectif cible"],["Source","Source"]]},
+    "T12_canvas_frameworks":{label:"Canvas & frameworks",layout:"card",title:["Framework","Framework"],subtitle:["Bloc","Bloc"],fields:[["Contenu","Contenu"]]},
+    "T13_risques":{label:"Risques",layout:"card",title:["Risque","Risque"],subtitle:["Categorie","Catégorie"],fields:[["Probabilite","Probabilité"],["Impact","Impact"],["Score","Score (PxI)"],["Mitigation","Plan de mitigation"],["Owner","Owner"],["Statut","Statut"]]}
   };
 
-  var GLOBAL_SKIP = /^(Notes|manualSort|id|gristHelper)/i;
-  var allRecords=[], tableId="", lastError="";
+  var GLOBAL_SKIP=/^(Notes|manualSort|id|gristHelper)/i;
+  var allRecords=[], tableId="", lastError="", optsApplied=false;
+  var state={rows:[]};
+  var sortables=[];
+  var rowsEl=document.getElementById("rows");
+  var infoEl=document.getElementById("info");
 
   function el(tag,cls,text){var n=document.createElement(tag);if(cls)n.className=cls;if(text!=null)n.textContent=text;return n;}
   function clear(n){while(n.firstChild)n.removeChild(n.firstChild);}
   function isEmpty(v){return v===null||v===undefined||v===""||(Array.isArray(v)&&v.length<=1);}
   function isAttach(v){return Array.isArray(v)&&v[0]==="L";}
+  function uid(){return Math.random().toString(36).slice(2,9);}
+  function readVal(rec,id){if(rec[id]!==undefined)return rec[id];var keys=Object.keys(rec);for(var i=0;i<keys.length;i++)if(keys[i].toLowerCase()===id.toLowerCase())return rec[keys[i]];return undefined;}
+  function recById(id){for(var i=0;i<allRecords.length;i++)if(allRecords[i].id===id)return allRecords[i];return null;}
   function fmtNum(v,id){
-    if(typeof v!=="number") return String(v);
-    if(/marge|pct|percent|%/i.test(id)) return (v*100).toFixed(1).replace(/\.0$/,"")+" %";
-    if(Number.isInteger(v)) return String(v);
+    if(typeof v!=="number")return String(v);
+    if(/marge|pct|percent|%/i.test(id))return (v*100).toFixed(1).replace(/\.0$/,"")+" %";
+    if(Number.isInteger(v))return String(v);
     return v.toLocaleString("fr-FR",{maximumFractionDigits:2});
   }
-
-  async function renderAttachment(ids){
-    var frag=el("div","imgwrap"); var shown=false;
-    for(var i=1;i<ids.length;i++){
-      var url=null;
-      try{if(grist.docApi&&typeof grist.docApi.getAttachmentURL==="function"){url=await grist.docApi.getAttachmentURL(ids[i]);}}catch(e){url=null;}
-      if(url){var im=document.createElement("img");im.src=url;im.alt="Image";frag.appendChild(im);shown=true;}
-    }
-    if(!shown) return el("div","imgzone","Image insérée dans Grist");
-    return frag;
+  function makeEditable(node,recId,colId){
+    if(!node||recId==null||!colId)return;
+    node.setAttribute("contenteditable","plaintext-only");
+    node.dataset.rec=String(recId);
+    node.dataset.col=colId;
+    node.dataset.orig=node.textContent;
+    node.spellcheck=false;
+    node.addEventListener("focus",function(){node.dataset.orig=node.textContent;});
+    node.addEventListener("keydown",function(e){if(e.key==="Escape"){node.textContent=node.dataset.orig||"";node.blur();}if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();node.blur();}});
+    node.addEventListener("blur",saveEdit);
+  }
+  function saveEdit(e){
+    var node=e.target;
+    var recId=parseInt(node.dataset.rec,10);
+    var colId=node.dataset.col;
+    var orig=node.dataset.orig||"";
+    var now=node.textContent;
+    if(now===orig)return;
+    if(!grist||!grist.docApi||!grist.docApi.applyUserActions){lastError="API édition indisponible";updateInfo();node.textContent=orig;return;}
+    var patch={};patch[colId]=now;
+    grist.docApi.applyUserActions([["UpdateRecord",tableId,recId,patch]])
+      .then(function(){node.dataset.orig=now;})
+      .catch(function(err){lastError="édition : "+(err&&err.message||err);updateInfo();node.textContent=orig;});
   }
 
-  function readVal(rec,id){
-    if(rec[id]!==undefined) return rec[id];
-    // fallback case-insensitive
-    var keys=Object.keys(rec);
-    for(var i=0;i<keys.length;i++){if(keys[i].toLowerCase()===id.toLowerCase())return rec[keys[i]];}
-    return undefined;
-  }
+  function attachUrlSync(id){if(grist&&grist.docApi&&grist.docApi.getAttachmentURL){try{return grist.docApi.getAttachmentURL(id);}catch(e){return null;}}return null;}
 
-  async function renderField(rec, idLabel){
-    var id=idLabel[0], label=idLabel[1];
-    var v=readVal(rec,id);
-    if(isEmpty(v)) return null;
-    var f=el("div","attr");
-    f.appendChild(el("div","k",label));
-    if(isAttach(v)){f.appendChild(await renderAttachment(v));}
-    else if(typeof v==="number"){f.appendChild(el("div","v",fmtNum(v,id)));}
-    else{f.appendChild(el("div","v",String(v)));}
-    return f;
-  }
-
-  async function renderKV(rec, cfg){
-    var sec=el("div","kv");
-    var t=readVal(rec,cfg.title[0]); if(!t) return null;
-    sec.appendChild(el("div","ttl",String(t)));
-    var hasSide=!!(cfg.side && !isEmpty(readVal(rec,cfg.side[0])));
-    var row=el("div","row"+(hasSide?"":" full"));
+  function buildKVContent(rec,cfg){
+    var w=el("div","kv");
+    var t=readVal(rec,cfg.title[0]);
+    var ttl=el("div","ttl",t!=null?String(t):"");
+    if(t!=null)makeEditable(ttl,rec.id,cfg.title[0]);
+    w.appendChild(ttl);
+    var hasSide=!!(cfg.side&&!isEmpty(readVal(rec,cfg.side[0])));
+    var grid=el("div","grid"+(hasSide?"":" full"));
     var body=el("div","body",String(readVal(rec,cfg.body[0])||""));
-    row.appendChild(body);
+    makeEditable(body,rec.id,cfg.body[0]);
+    grid.appendChild(body);
     if(hasSide){
-      var side=readVal(rec,cfg.side[0]);
-      row.appendChild(el("div","side",String(side)));
+      var side=el("div","side",String(readVal(rec,cfg.side[0])));
+      makeEditable(side,rec.id,cfg.side[0]);
+      grid.appendChild(side);
     }
-    sec.appendChild(row);
-    return sec;
+    w.appendChild(grid);
+    return w;
   }
-
-  async function renderCard(rec, cfg){
-    var t=readVal(rec,cfg.title[0]); if(!t) return null;
-    var card=el("div","card");
+  function buildCardContent(rec,cfg){
+    var w=el("div","card");
     var hd=el("div","hd");
-    hd.appendChild(el("div","t",String(t)));
+    var t=readVal(rec,cfg.title[0]);
+    var tn=el("div","t",t!=null?String(t):"");
+    if(t!=null)makeEditable(tn,rec.id,cfg.title[0]);
+    hd.appendChild(tn);
     if(cfg.subtitle){
       var st=readVal(rec,cfg.subtitle[0]);
-      if(!isEmpty(st)) hd.appendChild(el("div","st",String(st)));
+      var stn=el("div","st",st!=null?String(st):"");
+      if(!isEmpty(st))makeEditable(stn,rec.id,cfg.subtitle[0]);
+      hd.appendChild(stn);
     }
-    card.appendChild(hd);
-    var bd=el("div","bd"); var has=false;
+    w.appendChild(hd);
+    var bd=el("div","bd");
     for(var i=0;i<cfg.fields.length;i++){
-      var f=await renderField(rec, cfg.fields[i]);
-      if(f){bd.appendChild(f); has=true;}
+      var id=cfg.fields[i][0], label=cfg.fields[i][1];
+      var v=readVal(rec,id);
+      if(isEmpty(v))continue;
+      var a=el("div","attr");
+      a.appendChild(el("div","k",label));
+      if(isAttach(v)){
+        var url=attachUrlSync(v[1]);
+        if(url){var im=document.createElement("img");im.src=url;im.alt=label;im.style.maxWidth="100%";im.style.borderRadius="4px";a.appendChild(im);}
+        else a.appendChild(el("div","v","(image)"));
+      }else if(typeof v==="number"){
+        var vn=el("div","v",fmtNum(v,id));
+        a.appendChild(vn);
+      }else{
+        var vn2=el("div","v",String(v));
+        makeEditable(vn2,rec.id,id);
+        a.appendChild(vn2);
+      }
+      bd.appendChild(a);
     }
-    if(!has){bd.appendChild(el("div","attr",""));}
-    card.appendChild(bd);
-    return card;
+    w.appendChild(bd);
+    return w;
   }
-
-  async function renderAuto(rec){
-    var sec=el("div","section");
+  function buildAutoContent(rec){
+    var w=el("div","section");
     var keys=Object.keys(rec).filter(function(k){return !GLOBAL_SKIP.test(k);});
-    var title=keys[0]&&readVal(rec,keys[0]);
-    sec.appendChild(el("h3",null,title?String(title):"Élément"));
+    var titleKey=keys[0];
+    w.appendChild(el("h3",null,titleKey?String(readVal(rec,titleKey)||titleKey):"Élément"));
     for(var i=1;i<keys.length;i++){
-      var k=keys[i]; var v=rec[k];
-      if(isEmpty(v)) continue;
+      var k=keys[i], v=rec[k];
+      if(isEmpty(v))continue;
       var f=el("div","field");
       f.appendChild(el("div","k",k.replace(/_/g," ")));
-      if(isAttach(v)){f.appendChild(await renderAttachment(v));}
-      else if(typeof v==="number"){f.appendChild(el("div","v",fmtNum(v,k)));}
-      else{f.appendChild(el("div","v",String(v)));}
-      sec.appendChild(f);
+      if(typeof v==="number")f.appendChild(el("div","v",fmtNum(v,k)));
+      else{var vn=el("div","v",String(v));makeEditable(vn,rec.id,k);f.appendChild(vn);}
+      w.appendChild(f);
     }
-    return sec;
+    return w;
+  }
+  function buildRecordContent(rec){
+    var cfg=TABLE_CONFIG[tableId];
+    if(cfg&&cfg.layout==="kv")return buildKVContent(rec,cfg);
+    if(cfg&&cfg.layout==="card")return buildCardContent(rec,cfg);
+    return buildAutoContent(rec);
+  }
+
+  function buildImageContent(block){
+    var w=el("div","imgblock");
+    var url=attachUrlSync(block.attId);
+    if(url){var img=document.createElement("img");img.src=url;img.alt=block.caption||"image";w.appendChild(img);}
+    else w.appendChild(el("div","cap","(image indisponible)"));
+    var cap=el("div","cap",block.caption||"");
+    cap.setAttribute("contenteditable","plaintext-only");
+    cap.spellcheck=false;
+    cap.dataset.bkey=block.key;
+    cap.addEventListener("focus",function(){cap.dataset.orig=cap.textContent;});
+    cap.addEventListener("blur",function(){block.caption=cap.textContent;persist();});
+    cap.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();cap.blur();}});
+    w.appendChild(cap);
+    return w;
+  }
+
+  function buildBlockEl(block){
+    block.key=block.key||uid();
+    var b=el("div","block");
+    b.dataset.bkey=block.key;
+    var content=null;
+    if(block.type==="record"){var r=recById(block.recId);if(!r)return null;content=buildRecordContent(r);}
+    else if(block.type==="image")content=buildImageContent(block);
+    if(!content)return null;
+    b.appendChild(content);
+    var ctrls=el("div","ctrls");
+    var x=el("button",null,"×");
+    x.title="Masquer ce bloc";
+    x.addEventListener("click",function(ev){ev.stopPropagation();removeBlock(block.key);});
+    ctrls.appendChild(x);
+    b.appendChild(ctrls);
+    return b;
+  }
+
+  function buildRowEl(row){
+    row.id=row.id||uid();
+    var r=el("div","row");
+    r.dataset.rid=row.id;
+    var handle=el("div","rowhandle","⋮⋮");
+    handle.title="Glisser pour déplacer la ligne";
+    r.appendChild(handle);
+    for(var i=0;i<row.blocks.length;i++){
+      var be=buildBlockEl(row.blocks[i]);
+      if(be)r.appendChild(be);
+    }
+    return r;
+  }
+
+  function buildEmptyDrop(){
+    var r=el("div","row empty-drop");
+    r.dataset.rid="_empty";
+    return r;
+  }
+
+  function findRowByBlockKey(key){
+    for(var i=0;i<state.rows.length;i++){
+      for(var j=0;j<state.rows[i].blocks.length;j++)
+        if(state.rows[i].blocks[j].key===key)return {row:i,col:j};
+    }
+    return null;
+  }
+
+  function removeBlock(bkey){
+    var loc=findRowByBlockKey(bkey);
+    if(!loc)return;
+    state.rows[loc.row].blocks.splice(loc.col,1);
+    if(state.rows[loc.row].blocks.length===0)state.rows.splice(loc.row,1);
+    persist();render();
+  }
+
+  function reconcileState(){
+    var inState={};
+    state.rows.forEach(function(r){r.blocks.forEach(function(b){if(b.type==="record")inState[b.recId]=true;b.key=b.key||uid();});});
+    var validIds={};
+    allRecords.forEach(function(rec){validIds[rec.id]=true;if(!inState[rec.id])state.rows.push({id:uid(),blocks:[{type:"record",recId:rec.id,key:uid()}]});});
+    state.rows.forEach(function(r){r.blocks=r.blocks.filter(function(b){return b.type!=="record"||validIds[b.recId];});});
+    state.rows=state.rows.filter(function(r){return r.blocks.length>0;});
+  }
+
+  function rebuildStateFromDOM(){
+    var newRows=[];
+    var rowEls=rowsEl.querySelectorAll(".row:not(.empty-drop)");
+    var blockMap={};
+    state.rows.forEach(function(r){r.blocks.forEach(function(b){blockMap[b.key]=b;});});
+    for(var i=0;i<rowEls.length;i++){
+      var rEl=rowEls[i];
+      var bEls=rEl.querySelectorAll(".block");
+      var blocks=[];
+      for(var j=0;j<bEls.length;j++){
+        var bk=bEls[j].dataset.bkey;
+        if(blockMap[bk])blocks.push(blockMap[bk]);
+      }
+      if(blocks.length)newRows.push({id:rEl.dataset.rid||uid(),blocks:blocks});
+    }
+    // Handle empty-drop : if blocks were dropped there, promote to a new row
+    var emptyEl=rowsEl.querySelector(".row.empty-drop");
+    if(emptyEl){
+      var drop=emptyEl.querySelectorAll(".block");
+      if(drop.length){
+        var dblocks=[];
+        for(var k=0;k<drop.length;k++){var dk=drop[k].dataset.bkey;if(blockMap[dk])dblocks.push(blockMap[dk]);}
+        if(dblocks.length)newRows.push({id:uid(),blocks:dblocks});
+      }
+    }
+    state.rows=newRows;
+  }
+
+  function setupSortables(){
+    sortables.forEach(function(s){try{s.destroy();}catch(e){}});
+    sortables=[];
+    if(typeof Sortable==="undefined")return;
+    // Outer : whole rows (vertical)
+    sortables.push(Sortable.create(rowsEl,{
+      handle:".rowhandle",
+      draggable:".row:not(.empty-drop)",
+      animation:150,
+      ghostClass:"sortable-ghost",
+      onEnd:function(){rebuildStateFromDOM();persist();render();}
+    }));
+    // Inner : blocks within each row
+    var rowEls=rowsEl.querySelectorAll(".row");
+    rowEls.forEach(function(rEl){
+      sortables.push(Sortable.create(rEl,{
+        group:"blocks",
+        draggable:".block",
+        animation:150,
+        ghostClass:"sortable-ghost",
+        filter:"[contenteditable]",
+        preventOnFilter:false,
+        onEnd:function(){rebuildStateFromDOM();persist();render();}
+      }));
+    });
   }
 
   function updateInfo(){
-    var info=document.getElementById("info");
     var cfg=TABLE_CONFIG[tableId];
     var label=cfg?cfg.label:(tableId||"(table inconnue)");
     var n=allRecords.length;
-    var txt=label+" · "+n+" ligne"+(n>1?"s":"")+(cfg?"":" · layout auto");
-    if(lastError) txt+=" · erreur : "+lastError;
-    info.textContent=txt;
+    var visible=0;state.rows.forEach(function(r){visible+=r.blocks.filter(function(b){return b.type==="record";}).length;});
+    var txt=label+" · "+visible+"/"+n+" ligne"+(n>1?"s":"")+(cfg?"":" · auto");
+    if(lastError)txt+=" · ⚠ "+lastError;
+    infoEl.textContent=txt;
   }
 
-  async function render(){
-    updateInfo();
-    var page=document.getElementById("page");
-    clear(page);
-
-    var head=el("div","head");
-    var brand=el("div","brand");
-    var logo=document.createElement("img"); logo.src="WUBO-logo.png"; logo.alt="Wubo"; brand.appendChild(logo);
-    var meta=el("div","meta");
+  function renderMeta(){
+    var meta=document.getElementById("meta");
+    clear(meta);
     var d=new Date();
     var mm=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
     meta.appendChild(document.createTextNode("Document généré depuis Grist"));
     meta.appendChild(document.createElement("br"));
     meta.appendChild(document.createTextNode(d.getDate()+" "+mm[d.getMonth()]+" "+d.getFullYear()));
-    head.appendChild(brand); head.appendChild(meta); page.appendChild(head);
-
-    if(lastError){
-      page.appendChild(el("div","err","Erreur de rendu : "+lastError));
-    }
-
-    if(!allRecords.length){
-      page.appendChild(el("div","empty","Aucune ligne dans cette table (ou widget pas encore lié à une table)."));
-      return;
-    }
-
+  }
+  function renderFoot(){
+    var foot=document.getElementById("foot");
+    clear(foot);
     var cfg=TABLE_CONFIG[tableId];
-    try{
-      for(var i=0;i<allRecords.length;i++){
-        var node=null;
-        if(cfg && cfg.layout==="kv") node=await renderKV(allRecords[i], cfg);
-        else if(cfg && cfg.layout==="card") node=await renderCard(allRecords[i], cfg);
-        else node=await renderAuto(allRecords[i]);
-        if(node) page.appendChild(node);
-      }
-    }catch(e){
-      lastError=(e && e.message)||String(e);
-      page.appendChild(el("div","err","Erreur pendant le rendu : "+lastError));
-      updateInfo();
-    }
-
-    var foot=el("div","foot");
+    var d=new Date();
     foot.appendChild(el("span",null,"Wubo · Strasbourg"));
     foot.appendChild(el("span",null,"Source : Grist · "+(cfg?cfg.label:tableId)));
     foot.appendChild(el("span",null,"Généré le "+d.toLocaleDateString("fr-FR")));
-    page.appendChild(foot);
   }
+
+  function render(){
+    try{
+      reconcileState();
+      renderMeta();
+      renderFoot();
+      updateInfo();
+      clear(rowsEl);
+      if(lastError)rowsEl.appendChild(el("div","err","⚠ "+lastError));
+      if(!allRecords.length&&!state.rows.length){rowsEl.appendChild(el("div","empty","Aucune ligne dans cette table. Ajoute des lignes côté Grist puis Rafraîchir."));return;}
+      for(var i=0;i<state.rows.length;i++){
+        var re=buildRowEl(state.rows[i]);
+        if(re)rowsEl.appendChild(re);
+      }
+      rowsEl.appendChild(buildEmptyDrop());
+      setupSortables();
+    }catch(e){
+      lastError="render : "+(e&&e.message||e);
+      updateInfo();
+    }
+  }
+
+  function persist(){
+    if(typeof grist==="undefined"||!grist.setOptions)return;
+    try{grist.setOptions({rows:state.rows});}catch(e){lastError="persist : "+e.message;updateInfo();}
+  }
+
+  function loadStateFromOptions(opts){
+    if(!opts||!opts.rows||!Array.isArray(opts.rows))return;
+    var clean=[];
+    for(var i=0;i<opts.rows.length;i++){
+      var r=opts.rows[i];
+      if(!r||!Array.isArray(r.blocks))continue;
+      var blocks=[];
+      for(var j=0;j<r.blocks.length;j++){
+        var b=r.blocks[j];
+        if(!b)continue;
+        if(b.type==="record"&&typeof b.recId==="number")blocks.push({type:"record",recId:b.recId,key:b.key||uid()});
+        else if(b.type==="image"&&b.attId)blocks.push({type:"image",attId:b.attId,caption:b.caption||"",key:b.key||uid()});
+      }
+      if(blocks.length)clean.push({id:r.id||uid(),blocks:blocks});
+    }
+    state.rows=clean;
+  }
+
+  function pickImage(){document.getElementById("fileinp").click();}
+  function onFileChange(e){
+    var file=e.target.files&&e.target.files[0];
+    e.target.value="";
+    if(!file)return;
+    if(!grist||!grist.docApi||!grist.docApi.uploadAttachment){lastError="API upload indisponible";updateInfo();return;}
+    grist.docApi.uploadAttachment(file)
+      .then(function(res){
+        var id=Array.isArray(res)?res[0]:res;
+        if(!id){lastError="upload : id manquant";updateInfo();return;}
+        state.rows.push({id:uid(),blocks:[{type:"image",attId:id,caption:file.name.replace(/\.[a-z0-9]+$/i,""),key:uid()}]});
+        persist();render();
+      })
+      .catch(function(err){lastError="upload : "+(err&&err.message||err);updateInfo();});
+  }
+  function resetLayout(){state.rows=[];persist();render();}
 
   document.getElementById("print").addEventListener("click",function(){window.print();});
   document.getElementById("reload").addEventListener("click",function(){lastError="";render();});
+  document.getElementById("addimg").addEventListener("click",pickImage);
+  document.getElementById("fileinp").addEventListener("change",onFileChange);
+  document.getElementById("reset").addEventListener("click",function(){if(confirm("Réinitialiser la mise en page (les données Grist ne seront pas touchées) ?"))resetLayout();});
 
   if(typeof grist==="undefined"){
-    document.getElementById("info").textContent="Hors Grist · ouvre cette URL comme Custom Widget";
-    document.getElementById("page").appendChild(el("div","empty","Ouvre cette page comme widget personnalisé dans Grist (Custom + Full document access)."));
+    infoEl.textContent="Hors Grist · ouvre cette URL comme Custom Widget";
+    rowsEl.appendChild(el("div","empty","Ouvre cette page comme widget personnalisé dans Grist (Custom + Full document access)."));
     return;
   }
-
-  try{ grist.ready({requiredAccess:"full"}); }catch(e){ lastError="grist.ready : "+e.message; }
-  grist.onRecords(function(records){
-    try{ allRecords=records||[]; render(); }
-    catch(e){ lastError="onRecords : "+e.message; updateInfo(); }
-  });
-  try{
-    grist.getTable && grist.getTable().getTableId().then(function(id){tableId=id;render();})
-      .catch(function(e){lastError="getTableId : "+e.message;updateInfo();});
-  }catch(e){ lastError="getTable : "+e.message; updateInfo(); }
+  try{grist.ready({requiredAccess:"full"});}catch(e){lastError="ready : "+e.message;}
+  grist.onRecords(function(records){try{allRecords=records||[];render();}catch(e){lastError="onRecords : "+e.message;updateInfo();}});
+  if(grist.onOptions)grist.onOptions(function(opts){try{loadStateFromOptions(opts);optsApplied=true;render();}catch(e){lastError="onOptions : "+e.message;updateInfo();}});
+  try{grist.getTable&&grist.getTable().getTableId().then(function(id){tableId=id;render();}).catch(function(e){lastError="getTableId : "+e.message;updateInfo();});}catch(e){lastError="getTable : "+e.message;updateInfo();}
 })();
 </script>
 </body>
