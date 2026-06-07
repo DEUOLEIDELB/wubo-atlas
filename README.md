@@ -1,42 +1,56 @@
-# Wubo Atlas (widget de lecture A4)
+# Wubo Atlas (widget lecture / mise en page A4)
 
-Widget Grist générique : transforme **n'importe quelle table** en page A4 propre, à la charte Wubo, imprimable en PDF. Conçu pour **fabriquer des documents à présenter aux équipes** (golden circle, business model, structure de coût, certifications, etc.) à partir des données qui vivent déjà dans Grist.
+Widget Grist générique : transforme **n'importe quelle table de la Bible Wubo** en page A4 propre, à la charte Wubo, imprimable en PDF. Pose le widget dans chaque table, il s'auto-configure et garde la mise en page que tu fais.
+
+Live : `https://deuoleidelb.github.io/wubo-atlas/`
 
 ## Ce qu'il fait
 
-- Tu **choisis les lignes** à afficher (cases à cocher), ou tu affiches toute la table, ou la ligne active.
-- Tu donnes un **titre** et une **phrase d'intro** au document.
-- Rendu en feuille A4 (en-tête WUBO, sections, pied de page), **bouton Imprimer / PDF A4**.
-- Affiche les **images** des colonnes pièces jointes (accès complet au document requis).
-- Le widget **retient** ton titre, ton intro et ta sélection (stockés dans les options de la section Grist) : configure une fois un document "Golden Circle", il reste tel quel.
+- **Lecture A4 propre** : layout dédié par table (fiche pour les tables de type Rubrique/Contenu, carte pour les tables de type catalogue). Notes / colonnes système masquées automatiquement.
+- **Édition inline** : tu cliques sur n'importe quel texte affiché, tu modifies, tu sors → la modification part directement dans la cellule Grist source. Une seule vérité.
+- **Drag & drop façon Tally** :
+  - poignée `⋮⋮` à gauche de chaque ligne pour la monter / descendre,
+  - attrape un bloc et dépose-le à côté d'un autre pour les mettre **côte à côte (50/50)**,
+  - dépose un bloc dans la zone pointillée en bas pour créer une **nouvelle ligne**.
+- **Masquer un bloc** : croix `×` en haut à droite. Le bloc disparaît du A4 sans toucher la donnée Grist. Bouton **Réinitialiser** pour tout remettre.
+- **Insérer une image** : bouton `+ Image` en haut. L'image est **uploadée comme pièce jointe dans le doc Grist** : aucune dépendance externe, tout le monde voit la même mise en page avec les mêmes images.
+- **Impression A4** : bouton `Imprimer / PDF A4` (Ctrl+P enregistre en PDF).
+- **Persistance** : la mise en page (ordre, masquages, splits, images insérées) est stockée dans les options du widget Grist (`setOptions`). Tu rouvres le doc dans 6 mois, tu retrouves ton A4.
 
-## Exemples d'usage
+## Mapping par table
 
-- **Golden Circle** : pose le widget sur la table identité, mode Sélection, coche les lignes Golden Circle WHY/HOW/WHAT, titre "Golden Circle Wubo".
-- **Business model** : sur la table business model, coche les rubriques voulues, titre "Modèle économique".
-- **Structure de coût** : coche la rubrique coûts, titre "Structure de coût de l'appareil".
-- **Certifications** : coche les lignes concernées (risques/roadmap), titre "Certifications à réaliser".
+Les 13 tables de la Bible ont chacune un layout pré-câblé (titre, sous-titre, colonnes affichées, ordre).
 
-## Déploiement GitHub Pages (~5 min)
+| Table | Layout | Colonne titre |
+|---|---|---|
+| T01_identite | fiche | Rubrique |
+| T02_ecosysteme_produit | carte | Pilier |
+| T03_univers_narratif | carte | Élément / Type |
+| T04_blocs_modulaires | carte | Bloc / Audience |
+| T05_pitchs | carte | Type de pitch / Durée |
+| T06_business_model | fiche | Rubrique (+ sidebar Chiffres clés) |
+| T07_concurrence | carte | Concurrent / Type |
+| T08_equipe_legal | fiche | Rubrique (+ sidebar Rôle / Statut) |
+| T09_audiences | carte | Audience / Sous-segment |
+| T10_kits_roadmap | carte | Kit / Nom capsule |
+| T11_traction_metriques | carte | Métrique / Catégorie |
+| T12_canvas_frameworks | carte | Framework / Bloc |
+| T13_risques | carte | Risque / Catégorie |
 
-1. Sur github.com, crée un repo vide `wubo-atlas` (org DEUOLEIDELB).
-2. Sur ton ordinateur, dans ce dossier :
-   ```bash
-   git init && git add . && git commit -m "Widget lecture A4"
-   git branch -M main
-   git remote add origin git@github.com:DEUOLEIDELB/wubo-atlas.git
-   git push -u origin main
-   ```
-   (ou glisse simplement `index.html` et `README.md` dans le repo via l'interface web GitHub)
-3. Settings > Pages > Source : `main` / root. URL :
-   `https://deuoleidelb.github.io/wubo-atlas/`
+Pour une table inconnue, fallback en layout auto (titre = 1ère colonne, attributs = autres).
 
 ## Utilisation dans Grist
 
-Dans la table voulue : **Ajouter une section > Custom**, colle l'URL, puis règle **Access level** sur **Full document access** (sinon pas d'images). Tu peux poser plusieurs sections Atlas, une par document type.
+Dans la table voulue : **Add Widget to Page > Custom**, colle l'URL `https://deuoleidelb.github.io/wubo-atlas/`, puis règle **Access level** sur **Full document access** (indispensable : sans ça, pas d'édition inline, pas d'upload d'image, pas d'attachements).
+
+Le bandeau du haut affiche en permanence :
+- la table reconnue + nombre de lignes visibles / total,
+- les erreurs éventuelles (édition refusée, upload bloqué, etc.).
 
 ## Notes techniques
 
-- Un seul fichier `index.html`, dépend uniquement de `grist-plugin-api.js`.
-- Charte : violet `#5914D0`, jaune `#FFDD0B`, fond blanc, format A4.
-- Images via colonnes pièces jointes Grist. Si la version self-hosted (`grist.playwubo.com`) expose l'API d'attachement différemment, une zone de repli s'affiche : me prévenir pour câbler l'URL exacte.
+- Un seul `index.html`. Dépendances chargées via CDN : `grist-plugin-api.js` (Grist) + `Sortable.min.js` (drag & drop).
+- Stockage de la mise en page : `grist.setOptions({rows: [...]})` par instance de widget.
+- Stockage des images : `grist.docApi.uploadAttachment(file)` → ID référencé dans la config.
+- Édition : `grist.docApi.applyUserActions([["UpdateRecord", tableId, recId, {colId: value}]])`.
+- Charte : violet `#5914D0`, jaune `#FFDD0B`, format A4 (`@page { size: A4 }`).
