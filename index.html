@@ -30,17 +30,16 @@
   .meta{font-size:11px;color:var(--hint);text-align:right;line-height:1.5}
 
   .rows{display:flex;flex-direction:column;flex:1}
-  .row{display:flex;gap:14px;align-items:stretch;break-inside:avoid;min-height:24px;position:relative;margin-bottom:14px}
-  .row:last-child{margin-bottom:0}
+  .row{display:flex;gap:14px;align-items:stretch;break-inside:avoid;min-height:24px;position:relative;margin:0}
   .row.sortable-ghost{opacity:.3}
   .row.file-drop-target{outline:2px dashed var(--violet);outline-offset:3px;border-radius:4px}
 
-  /* Drop zone inter-row : invisible normalement, visible pendant un drag */
-  .rowgap{height:0;border-radius:5px;margin:-14px 0 0;background:transparent;border:0 dashed var(--violet-line);transition:height .14s,margin .14s,border-width .14s,background .14s;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--violet);font-size:10px;opacity:0;pointer-events:none;letter-spacing:.4px}
-  body.dragging .rowgap{height:30px;margin:6px 0;border-width:2px;background:var(--violet-soft);opacity:.95;pointer-events:auto}
+  /* Drop zone inter-row : hauteur constante, juste visibilité qui change */
+  .rowgap{height:14px;margin:0;border-radius:4px;background:transparent;border:1px dashed transparent;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:transparent;font-size:10px;letter-spacing:.4px;opacity:0;transition:opacity .15s,background .15s,border-color .15s,color .15s}
+  body.dragging .rowgap{opacity:.85;background:var(--violet-soft);border-color:var(--violet-line);color:var(--violet)}
   body.dragging .rowgap::before{content:"+ nouvelle ligne"}
-  body.dragging .rowgap.sortable-drag-over,body.dragging .rowgap:hover{background:rgba(89,20,208,.18)}
-  .rowgap.empty-trail{height:38px;margin:18px 0 0;border:2px dashed var(--violet-line);background:transparent;opacity:.55;pointer-events:auto;color:var(--violet)}
+  body.dragging .rowgap.sortable-drag-over,body.dragging .rowgap:hover{opacity:1;background:rgba(89,20,208,.2);border-color:var(--violet)}
+  .rowgap.empty-trail{height:38px;border-color:var(--violet-line);background:transparent;opacity:.55;color:var(--violet);margin-top:8px}
   .rowgap.empty-trail::before{content:"glisse un bloc, une image ou un fichier ici"}
   body.dragging .rowgap.empty-trail{opacity:1;background:var(--violet-soft)}
 
@@ -87,11 +86,18 @@
   /* Block IMAGE */
   .imgblock{display:flex;flex-direction:column;border:1px solid var(--rule);border-radius:6px;background:#fff;overflow:hidden;resize:both;min-width:120px;min-height:90px;max-width:100%;height:100%}
   .imgblock .imgwrap{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#FAFAFA}
-  .imgblock .imgwrap img{width:100%;height:100%;object-fit:contain;display:block;-webkit-user-drag:none;user-drag:none;pointer-events:none}
+  .imgblock .imgwrap img{width:100%;height:100%;object-fit:contain;object-position:center center;display:block;-webkit-user-drag:none;user-drag:none;pointer-events:none}
+  .imgblock.align-left .imgwrap img{object-position:left center}
+  .imgblock.align-right .imgwrap img{object-position:right center}
+  .imgblock .imgctrls{display:none;justify-content:center;gap:3px;padding:4px;border-top:1px solid var(--rule);background:#FAFAFA}
+  .imgblock:hover .imgctrls{display:flex}
+  .imgblock .imgctrls button{width:24px;height:22px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--rule);border-radius:3px;cursor:pointer;color:var(--muted);padding:0}
+  .imgblock .imgctrls button:hover{color:var(--violet);border-color:var(--violet-line)}
+  .imgblock .imgctrls button.active{color:#fff;background:var(--violet);border-color:var(--violet)}
+  .imgblock .imgctrls button svg{width:12px;height:10px}
   .imgblock .cap{font-size:11px;color:var(--muted);text-align:center;outline:none;min-height:0;padding:0}
-  .imgblock .cap:not(:empty){padding:6px 10px;border-top:1px solid var(--rule)}
-  .imgblock:hover .cap:empty::before{content:"+ légende";color:var(--hint);opacity:.45;display:block;padding:4px 10px;font-size:10px;border-top:1px dashed var(--rule)}
-  .imgblock .cap:focus::before{content:none!important}
+  .imgblock .cap:not(.cap-empty){padding:6px 10px;border-top:1px solid var(--rule)}
+  .imgblock:hover .cap.cap-empty:not(:focus)::before{content:"+ légende";color:var(--hint);opacity:.45;display:block;padding:4px 10px;font-size:10px;border-top:1px dashed var(--rule)}
 
   /* Block TEXTE libre */
   .txtblock{font-size:13.5px;line-height:1.6;outline:none;min-height:36px;padding:8px 10px;border:1px dashed transparent;border-radius:5px}
@@ -556,6 +562,8 @@
     w.dataset.bkey=block.key;
     if(block.width)w.style.width=block.width+"px";
     if(block.height)w.style.height=block.height+"px";
+    var align=block.align||"center";
+    w.classList.add("align-"+align);
     var wrap=el("div","imgwrap");
     var src=block.attId!=null?attachUrlSync(block.attId):(block.dataUrl||null);
     if(src){
@@ -568,11 +576,50 @@
       wrap.appendChild(el("div","cap","(image indisponible)"));
     }
     w.appendChild(wrap);
-    var cap=el("div","cap",block.caption||"");
+    // Image alignment controls
+    var ictrls=el("div","imgctrls");
+    var aligns=[
+      ["left",'<svg viewBox="0 0 12 10" fill="currentColor"><rect x="0" y="1" width="9" height="2"/><rect x="0" y="4" width="12" height="2"/><rect x="0" y="7" width="6" height="2"/></svg>',"Aligner à gauche"],
+      ["center",'<svg viewBox="0 0 12 10" fill="currentColor"><rect x="1.5" y="1" width="9" height="2"/><rect x="0" y="4" width="12" height="2"/><rect x="3" y="7" width="6" height="2"/></svg>',"Centrer"],
+      ["right",'<svg viewBox="0 0 12 10" fill="currentColor"><rect x="3" y="1" width="9" height="2"/><rect x="0" y="4" width="12" height="2"/><rect x="6" y="7" width="6" height="2"/></svg>',"Aligner à droite"]
+    ];
+    aligns.forEach(function(a){
+      var btn=document.createElement("button");
+      btn.type="button";btn.title=a[2];
+      btn.innerHTML=a[1];
+      if(align===a[0])btn.classList.add("active");
+      btn.addEventListener("click",function(e){
+        e.preventDefault();e.stopPropagation();
+        block.align=a[0];
+        w.classList.remove("align-left","align-center","align-right");
+        w.classList.add("align-"+a[0]);
+        ictrls.querySelectorAll("button").forEach(function(b){b.classList.remove("active");});
+        btn.classList.add("active");
+        persist();
+      });
+      ictrls.appendChild(btn);
+    });
+    w.appendChild(ictrls);
+    // Caption
+    var cap=el("div","cap");
     cap.setAttribute("contenteditable","true");
     cap.spellcheck=false;
-    cap.addEventListener("focus",function(){cap.dataset.orig=cap.textContent;});
-    cap.addEventListener("blur",function(){block.caption=cap.textContent;persist();});
+    if((block.caption||"").trim()===""){cap.classList.add("cap-empty");}
+    else{cap.textContent=block.caption;}
+    cap.addEventListener("focus",function(){cap.dataset.orig=cap.textContent;cap.classList.remove("cap-empty");});
+    cap.addEventListener("input",function(){if(cap.textContent.trim()==="")cap.classList.add("cap-empty");else cap.classList.remove("cap-empty");});
+    cap.addEventListener("blur",function(){
+      if(cap.textContent.trim()===""){
+        // nettoyage complet (suppression des <br> résiduels)
+        while(cap.firstChild)cap.removeChild(cap.firstChild);
+        cap.classList.add("cap-empty");
+        block.caption="";
+      }else{
+        cap.classList.remove("cap-empty");
+        block.caption=cap.textContent;
+      }
+      persist();
+    });
     cap.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();cap.blur();}});
     w.appendChild(cap);
     if(resizeObserver){try{resizeObserver.observe(w);}catch(e){}}
@@ -687,6 +734,9 @@
       handle:".bhandle",
       animation:150,
       ghostClass:"sortable-ghost",
+      swapThreshold:0.65,
+      invertSwap:false,
+      emptyInsertThreshold:8,
       onStart:function(){isSortableDragging=true;document.body.classList.add("dragging");hideFmtToolbar();},
       onEnd:function(){isSortableDragging=false;document.body.classList.remove("dragging");rebuildStateFromDOM();persist();render();}
     };
@@ -785,7 +835,7 @@
         var b=r.blocks[j];
         if(!b)continue;
         if(b.type==="record"&&typeof b.recId==="number")blocks.push({type:"record",recId:b.recId,key:b.key||uid()});
-        else if(b.type==="image"&&(b.attId!=null||b.dataUrl))blocks.push({type:"image",attId:b.attId||null,dataUrl:b.dataUrl||null,caption:b.caption||"",width:b.width||null,height:b.height||null,key:b.key||uid()});
+        else if(b.type==="image"&&(b.attId!=null||b.dataUrl))blocks.push({type:"image",attId:b.attId||null,dataUrl:b.dataUrl||null,caption:b.caption||"",width:b.width||null,height:b.height||null,align:b.align||"center",key:b.key||uid()});
         else if(b.type==="text")blocks.push({type:"text",html:b.html||"",key:b.key||uid()});
       }
       if(blocks.length)clean.push({id:r.id||uid(),blocks:blocks});
