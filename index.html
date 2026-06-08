@@ -47,17 +47,17 @@
 
   /* Drop zone verticale entre colonnes (split horizontal) */
   .colgap{flex:0 0 10px;align-self:stretch;border-radius:4px;background:transparent;border:1px dashed transparent;transition:background .12s,border-color .12s}
-  body.dragging .colgap{background:var(--violet-soft);border-color:var(--violet-line)}
+  body.dragging .colgap{flex-basis:30px;background:var(--violet-soft);border-color:var(--violet-line)}
   body.dragging .colgap.drop-hot,body.dragging .colgap:hover{background:rgba(89,20,208,.22);border-color:var(--violet)}
 
   /* Drop zone horizontale entre lignes (nouvelle ligne) : hauteur constante */
   .rowgap{height:14px;margin:0;border-radius:4px;background:transparent;border:1px dashed transparent;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:transparent;font-size:10px;letter-spacing:.4px;opacity:0;transition:opacity .12s,background .12s,border-color .12s,color .12s}
-  body.dragging .rowgap{opacity:.85;background:var(--violet-soft);border-color:var(--violet-line);color:var(--violet)}
+  body.dragging .rowgap{height:44px;opacity:.85;background:var(--violet-soft);border-color:var(--violet-line);color:var(--violet);font-size:12px}
   body.dragging .rowgap::before{content:"+ nouvelle ligne"}
   body.dragging .rowgap.drop-hot,body.dragging .rowgap:hover{opacity:1;background:rgba(89,20,208,.2);border-color:var(--violet)}
   .rowgap.empty-trail{height:38px;border-color:var(--violet-line);background:transparent;opacity:.55;color:var(--violet);margin-top:8px}
   .rowgap.empty-trail::before{content:"glisse un bloc, une image ou un fichier ici"}
-  body.dragging .rowgap.empty-trail{opacity:1;background:var(--violet-soft)}
+  body.dragging .rowgap.empty-trail{height:66px;opacity:1;background:var(--violet-soft)}
 
   .block{min-width:0;position:relative;background:#fff;border-radius:6px}
 
@@ -101,7 +101,8 @@
   [contenteditable] li{margin:2px 0}
 
   /* Block IMAGE */
-  .imgblock{display:flex;flex-direction:column;border:1px solid var(--rule);border-radius:6px;background:#fff;overflow:hidden;resize:both;min-width:120px;min-height:90px;max-width:100%}
+  .imgblock{display:flex;flex-direction:column;border:1px solid transparent;border-radius:6px;background:#fff;overflow:hidden;resize:both;min-width:120px;min-height:90px;max-width:100%}
+  .imgblock:hover{border-color:var(--rule)}
   .imgblock.align-left{margin-right:auto;margin-left:0}
   .imgblock.align-center{margin-left:auto;margin-right:auto}
   .imgblock.align-right{margin-left:auto;margin-right:0}
@@ -162,18 +163,23 @@
     html,body{background:#fff}
     .bar,.fmttool,.toast{display:none!important}
     .canvas{padding:0}
-    .page{width:auto;min-height:auto;box-shadow:none;border:none;border-radius:0;padding:0 0 16mm}
+    .page{width:auto;min-height:auto;box-shadow:none;border:none;border-radius:0;padding:0}
     .rowgap,.colgap{display:none!important}
     .block-tools{display:none!important}
     .block::before{display:none!important}
     [contenteditable]:focus{background:none;box-shadow:none}
-    .imgblock{resize:none}
+    .imgblock{resize:none;border:none!important}
+    .imgblock .imgwrap{background:#fff}
     .txtblock{border:none}
     .row{gap:14px}
-    /* Pied de page répété sur CHAQUE page imprimée */
-    .foot{position:fixed;bottom:6mm;left:0;right:0;margin:0;padding:5px 0 0;border-top:1px solid var(--rule);background:#fff}
+    /* On garde chaque bloc entier : s'il ne tient pas, il bascule a la page suivante
+       au lieu de glisser sous le pied de page */
+    .block,.card,.kv,.imgblock,.section{break-inside:avoid}
+    /* Pied de page répété sur CHAQUE page imprimée + bande blanche qui masque tout bleed */
+    .foot{position:fixed;bottom:0;left:0;right:0;margin:0;height:14mm;padding:5px 0 0;border-top:1px solid var(--rule);background:#fff;align-items:flex-start}
   }
-  @page{size:A4;margin:14mm 14mm 22mm 14mm}
+  /* Grande marge basse : reserve la place du pied de page sur chaque page */
+  @page{size:A4;margin:14mm 14mm 30mm 14mm}
 </style>
 </head>
 <body>
@@ -252,7 +258,7 @@
   var allRecords=[], tableId="", lastError="";
   // Modèle : state.rows[].cols[].blocks[]  +  state.hidden = {recId:true}
   var state={rows:[],hidden:{}};
-  var VER="v12";
+  var VER="v13";
   var recordsLoaded=false, optionsLoaded=false, tableLoaded=false, didInit=false, autosave=false;
   var graceTimer=null, lastPersisted="", lastSaved="";
   var sortables=[];
