@@ -46,17 +46,19 @@
   .block{flex:1;min-width:0;position:relative;background:#fff;border-radius:6px}
   .block.sortable-ghost{opacity:.3}
 
-  .block .bhandle{position:absolute;top:6px;left:6px;display:none;align-items:center;justify-content:center;z-index:4;width:18px;height:22px;border-radius:4px;cursor:grab;color:var(--muted);background:rgba(255,255,255,.92);border:1px solid var(--rule);padding:0;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-  .block:hover .bhandle{display:flex}
-  .block .bhandle:hover{color:var(--violet);border-color:var(--violet-line);background:#fff}
-  .block .bhandle:active{cursor:grabbing}
-  .block .bhandle svg{width:8px;height:12px}
-
-  .block .ctrls{position:absolute;top:6px;right:6px;display:none;gap:4px;z-index:4}
-  .block:hover .ctrls{display:flex}
-  .block .ctrls .iconbtn{width:20px;height:22px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.92);border:1px solid var(--rule);border-radius:4px;cursor:pointer;color:var(--muted);box-shadow:0 1px 3px rgba(0,0,0,.06);padding:0}
-  .block .ctrls .iconbtn:hover{color:var(--violet);border-color:var(--violet-line);background:#fff}
-  .block .ctrls .iconbtn svg{width:10px;height:10px}
+  /* Toolbar flottante au-dessus du bloc (style Notion) */
+  .block-tools{position:absolute;top:-30px;left:50%;transform:translateX(-50%);background:#2B2B2B;border-radius:6px;padding:3px;display:flex;gap:1px;z-index:6;box-shadow:0 3px 10px rgba(0,0,0,.25);opacity:0;visibility:hidden;transition:opacity .12s,visibility .12s;white-space:nowrap;height:28px;align-items:center}
+  .block:hover .block-tools,.block-tools:hover{opacity:1;visibility:visible}
+  .block-tools button{background:transparent;color:#fff;border:none;width:24px;height:22px;border-radius:3px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center}
+  .block-tools button:hover{background:#444}
+  .block-tools button.active{background:var(--violet)}
+  .block-tools button svg{width:11px;height:11px}
+  .block-tools .sep{width:1px;background:#555;margin:2px 2px}
+  .block-tools .bhandle{cursor:grab}
+  .block-tools .bhandle:active{cursor:grabbing}
+  /* Zone de capture hover entre toolbar et bloc (élimine le gap qui couperait le hover) */
+  .block::before{content:"";position:absolute;top:-8px;left:0;right:0;height:8px;z-index:5;pointer-events:none}
+  .block:hover::before{pointer-events:auto}
 
   /* Layout KV */
   .kv .ttl{font-size:14px;font-weight:600;color:var(--violet);margin:0 0 6px;padding-bottom:4px;border-bottom:1px solid var(--rule);text-transform:uppercase;letter-spacing:.4px;outline:none}
@@ -84,17 +86,13 @@
   [contenteditable] li{margin:2px 0}
 
   /* Block IMAGE */
-  .imgblock{display:flex;flex-direction:column;border:1px solid var(--rule);border-radius:6px;background:#fff;overflow:hidden;resize:both;min-width:120px;min-height:90px;max-width:100%;height:100%}
+  .imgblock{display:flex;flex-direction:column;border:1px solid var(--rule);border-radius:6px;background:#fff;overflow:hidden;resize:both;min-width:120px;min-height:90px;max-width:100%}
+  /* Alignement sur la ligne (margin auto pousse l'imgblock à G/C/D dans son bloc parent) */
+  .imgblock.align-left{margin-right:auto;margin-left:0}
+  .imgblock.align-center{margin-left:auto;margin-right:auto}
+  .imgblock.align-right{margin-left:auto;margin-right:0}
   .imgblock .imgwrap{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#FAFAFA}
-  .imgblock .imgwrap img{width:100%;height:100%;object-fit:contain;object-position:center center;display:block;-webkit-user-drag:none;user-drag:none;pointer-events:none}
-  .imgblock.align-left .imgwrap img{object-position:left center}
-  .imgblock.align-right .imgwrap img{object-position:right center}
-  .imgblock .imgctrls{display:none;justify-content:center;gap:3px;padding:4px;border-top:1px solid var(--rule);background:#FAFAFA}
-  .imgblock:hover .imgctrls{display:flex}
-  .imgblock .imgctrls button{width:24px;height:22px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--rule);border-radius:3px;cursor:pointer;color:var(--muted);padding:0}
-  .imgblock .imgctrls button:hover{color:var(--violet);border-color:var(--violet-line)}
-  .imgblock .imgctrls button.active{color:#fff;background:var(--violet);border-color:var(--violet)}
-  .imgblock .imgctrls button svg{width:12px;height:10px}
+  .imgblock .imgwrap img{width:100%;height:100%;object-fit:contain;display:block;-webkit-user-drag:none;user-drag:none;pointer-events:none}
   .imgblock .cap{font-size:11px;color:var(--muted);text-align:center;outline:none;min-height:0;padding:0}
   .imgblock .cap:not(.cap-empty){padding:6px 10px;border-top:1px solid var(--rule)}
   .imgblock:hover .cap.cap-empty:not(:focus)::before{content:"+ légende";color:var(--hint);opacity:.45;display:block;padding:4px 10px;font-size:10px;border-top:1px dashed var(--rule)}
@@ -151,7 +149,7 @@
     .canvas{padding:0}
     .page{width:auto;min-height:auto;box-shadow:none;border:none;border-radius:0;padding:0}
     .rowgap{display:none!important}
-    .block .ctrls,.block .bhandle{display:none!important}
+    .block-tools{display:none!important}
     [contenteditable]:focus{background:none;box-shadow:none}
     .imgblock{resize:none}
     .txtblock{border:none}
@@ -576,30 +574,6 @@
       wrap.appendChild(el("div","cap","(image indisponible)"));
     }
     w.appendChild(wrap);
-    // Image alignment controls
-    var ictrls=el("div","imgctrls");
-    var aligns=[
-      ["left",'<svg viewBox="0 0 12 10" fill="currentColor"><rect x="0" y="1" width="9" height="2"/><rect x="0" y="4" width="12" height="2"/><rect x="0" y="7" width="6" height="2"/></svg>',"Aligner à gauche"],
-      ["center",'<svg viewBox="0 0 12 10" fill="currentColor"><rect x="1.5" y="1" width="9" height="2"/><rect x="0" y="4" width="12" height="2"/><rect x="3" y="7" width="6" height="2"/></svg>',"Centrer"],
-      ["right",'<svg viewBox="0 0 12 10" fill="currentColor"><rect x="3" y="1" width="9" height="2"/><rect x="0" y="4" width="12" height="2"/><rect x="6" y="7" width="6" height="2"/></svg>',"Aligner à droite"]
-    ];
-    aligns.forEach(function(a){
-      var btn=document.createElement("button");
-      btn.type="button";btn.title=a[2];
-      btn.innerHTML=a[1];
-      if(align===a[0])btn.classList.add("active");
-      btn.addEventListener("click",function(e){
-        e.preventDefault();e.stopPropagation();
-        block.align=a[0];
-        w.classList.remove("align-left","align-center","align-right");
-        w.classList.add("align-"+a[0]);
-        ictrls.querySelectorAll("button").forEach(function(b){b.classList.remove("active");});
-        btn.classList.add("active");
-        persist();
-      });
-      ictrls.appendChild(btn);
-    });
-    w.appendChild(ictrls);
     // Caption
     var cap=el("div","cap");
     cap.setAttribute("contenteditable","true");
@@ -641,6 +615,12 @@
     return w;
   }
 
+  var ALIGN_ICONS={
+    left:'<svg viewBox="0 0 12 10" fill="currentColor"><rect x="0" y="1" width="9" height="2"/><rect x="0" y="4" width="12" height="2"/><rect x="0" y="7" width="6" height="2"/></svg>',
+    center:'<svg viewBox="0 0 12 10" fill="currentColor"><rect x="1.5" y="1" width="9" height="2"/><rect x="0" y="4" width="12" height="2"/><rect x="3" y="7" width="6" height="2"/></svg>',
+    right:'<svg viewBox="0 0 12 10" fill="currentColor"><rect x="3" y="1" width="9" height="2"/><rect x="0" y="4" width="12" height="2"/><rect x="6" y="7" width="6" height="2"/></svg>'
+  };
+
   function buildBlockEl(block){
     block.key=block.key||uid();
     var b=el("div","block");
@@ -650,17 +630,53 @@
     else if(block.type==="image")content=buildImageContent(block);
     else if(block.type==="text")content=buildTextContent(block);
     if(!content)return null;
-    b.appendChild(content);
-    var h=el("button","bhandle");h.type="button";h.title="Glisser pour déplacer ce bloc";
+
+    // Toolbar flottante au-dessus du bloc
+    var tools=el("div","block-tools");
+
+    // Drag handle (sert au SortableJS pour déplacer le bloc)
+    var h=document.createElement("button");
+    h.type="button";h.className="bhandle";h.title="Glisser pour déplacer ce bloc";
     h.appendChild(iconDots());
     h.addEventListener("click",function(e){e.preventDefault();});
-    b.appendChild(h);
-    var ctrls=el("div","ctrls");
-    var x=el("button","iconbtn");x.type="button";x.title="Masquer ce bloc";
+    tools.appendChild(h);
+
+    // Boutons d'alignement seulement pour les images
+    if(block.type==="image"){
+      tools.appendChild(el("div","sep"));
+      var imgblockEl=content;
+      var curAlign=block.align||"center";
+      ["left","center","right"].forEach(function(a){
+        var btn=document.createElement("button");
+        btn.type="button";
+        btn.title=a==="left"?"Aligner à gauche":(a==="right"?"Aligner à droite":"Centrer");
+        var d=document.createElement("div");d.innerHTML=ALIGN_ICONS[a];btn.appendChild(d.firstChild);
+        if(curAlign===a)btn.classList.add("active");
+        btn.addEventListener("click",function(e){
+          e.preventDefault();e.stopPropagation();
+          block.align=a;
+          imgblockEl.classList.remove("align-left","align-center","align-right");
+          imgblockEl.classList.add("align-"+a);
+          tools.querySelectorAll("button").forEach(function(b2){if(b2!==h&&b2!==x)b2.classList.remove("active");});
+          btn.classList.add("active");
+          persist();
+        });
+        tools.appendChild(btn);
+      });
+      tools.appendChild(el("div","sep"));
+    }else{
+      tools.appendChild(el("div","sep"));
+    }
+
+    // Masquer
+    var x=document.createElement("button");
+    x.type="button";x.title="Masquer ce bloc";
     x.appendChild(iconX());
     x.addEventListener("click",function(ev){ev.stopPropagation();ev.preventDefault();removeBlock(block.key);});
-    ctrls.appendChild(x);
-    b.appendChild(ctrls);
+    tools.appendChild(x);
+
+    b.appendChild(tools);
+    b.appendChild(content);
     return b;
   }
 
@@ -732,11 +748,14 @@
       group:"blocks",
       draggable:".block",
       handle:".bhandle",
-      animation:150,
+      animation:120,
       ghostClass:"sortable-ghost",
-      swapThreshold:0.65,
+      swapThreshold:0.55,
       invertSwap:false,
-      emptyInsertThreshold:8,
+      emptyInsertThreshold:10,
+      forceFallback:true,
+      fallbackTolerance:5,
+      fallbackOnBody:true,
       onStart:function(){isSortableDragging=true;document.body.classList.add("dragging");hideFmtToolbar();},
       onEnd:function(){isSortableDragging=false;document.body.classList.remove("dragging");rebuildStateFromDOM();persist();render();}
     };
@@ -778,6 +797,8 @@
       renderFoot();
       updateInfo();
       // Setup resize observer once
+      // IMPORTANT : on utilise offsetWidth/offsetHeight (box-sizing border-box)
+      // PAS contentRect.width qui exclut bordures et cause un shrink en boucle
       if(!resizeObserver&&typeof ResizeObserver!=="undefined"){
         resizeObserver=new ResizeObserver(function(entries){
           var changed=false;
@@ -785,13 +806,13 @@
             var elem=entries[i].target;
             var bk=elem.dataset.bkey;
             if(!bk)continue;
-            // find block in state
+            var nw=elem.offsetWidth;
+            var nh=elem.offsetHeight;
+            if(!nw||!nh)continue;
             for(var r=0;r<state.rows.length;r++){
               for(var c=0;c<state.rows[r].blocks.length;c++){
                 var b=state.rows[r].blocks[c];
                 if(b.key===bk&&b.type==="image"){
-                  var nw=Math.round(entries[i].contentRect.width);
-                  var nh=Math.round(entries[i].contentRect.height);
                   if(b.width!==nw||b.height!==nh){b.width=nw;b.height=nh;changed=true;}
                 }
               }
@@ -847,17 +868,19 @@
   function readFileAsDataURL(file){return new Promise(function(res,rej){var fr=new FileReader();fr.onload=function(){res(fr.result);};fr.onerror=function(){rej(new Error("read"));};fr.readAsDataURL(file);});}
   function loadImg(src){return new Promise(function(res,rej){var i=new Image();i.onload=function(){res(i);};i.onerror=function(){rej(new Error("img"));};i.src=src;});}
   async function compressImage(file,maxDim){
-    if(file.type==="image/svg+xml")return await readFileAsDataURL(file);
+    if(file.type==="image/svg+xml"){var url=await readFileAsDataURL(file);return {dataUrl:url,width:0,height:0};}
     var dataUrl=await readFileAsDataURL(file);
     var img=await loadImg(dataUrl);
-    var w=img.width,h=img.height;
-    if(w<=maxDim&&h<=maxDim&&file.size<500*1024)return dataUrl;
-    if(w>=h){if(w>maxDim){h=Math.round(h*maxDim/w);w=maxDim;}}else{if(h>maxDim){w=Math.round(w*maxDim/h);h=maxDim;}}
-    var c=document.createElement("canvas");c.width=w;c.height=h;
-    c.getContext("2d").drawImage(img,0,0,w,h);
-    // Preserve alpha for PNG/GIF/WebP, JPEG for JPG
-    var keepAlpha=(file.type==="image/png"||file.type==="image/gif"||file.type==="image/webp");
-    return c.toDataURL(keepAlpha?"image/png":"image/jpeg",keepAlpha?undefined:0.85);
+    var ow=img.width,oh=img.height;
+    var w=ow,h=oh;
+    if(!(w<=maxDim&&h<=maxDim&&file.size<500*1024)){
+      if(w>=h){if(w>maxDim){h=Math.round(h*maxDim/w);w=maxDim;}}else{if(h>maxDim){w=Math.round(w*maxDim/h);h=maxDim;}}
+      var c=document.createElement("canvas");c.width=w;c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      var keepAlpha=(file.type==="image/png"||file.type==="image/gif"||file.type==="image/webp");
+      dataUrl=c.toDataURL(keepAlpha?"image/png":"image/jpeg",keepAlpha?undefined:0.85);
+    }
+    return {dataUrl:dataUrl,width:ow,height:oh};
   }
   async function insertImage(file, target){
     if(!file||!file.type||file.type.indexOf("image/")!==0){lastError="format image non supporté";updateInfo();return;}
@@ -866,13 +889,20 @@
       if(grist&&grist.docApi&&typeof grist.docApi.uploadAttachment==="function"){
         try{var res=await grist.docApi.uploadAttachment(file);attId=Array.isArray(res)?res[0]:res;}catch(e){attId=null;}
       }
+      // Default sizing : moitié de la zone utile (≈ 340px) ou taille naturelle si plus petite
+      // Comme ça l'alignement gauche/centre/droite a un effet visible direct
+      var DEFAULT_W=340;
       var block;
       if(attId){
-        block={type:"image",attId:attId,caption:"",key:uid()};
+        block={type:"image",attId:attId,caption:"",align:"center",width:DEFAULT_W,key:uid()};
       }else{
-        var dataUrl=await compressImage(file,1600);
-        if(!dataUrl){lastError="lecture image impossible";updateInfo();return;}
-        block={type:"image",dataUrl:dataUrl,caption:"",key:uid()};
+        var comp=await compressImage(file,1600);
+        if(!comp||!comp.dataUrl){lastError="lecture image impossible";updateInfo();return;}
+        var natW=comp.width||DEFAULT_W;
+        var natH=comp.height||0;
+        var startW=Math.min(natW,DEFAULT_W);
+        var startH=natH&&natW?Math.round(startW*natH/natW):0;
+        block={type:"image",dataUrl:comp.dataUrl,caption:"",align:"center",width:startW,height:startH||null,key:uid()};
       }
       if(target && target.rowIdx!=null){state.rows[target.rowIdx].blocks.push(block);}
       else if(target && target.afterRowIdx!=null){state.rows.splice(target.afterRowIdx+1,0,{id:uid(),blocks:[block]});}
