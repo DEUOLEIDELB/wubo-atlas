@@ -223,7 +223,8 @@
   var allRecords=[], tableId="", lastError="", lastSaved="";
   // Modèle : blocks (métadonnées par clé) + layout (positions GridStack) + hidden (recId masqués)
   var state={blocks:{},layout:[],hidden:{}};
-  var recordsLoaded=false, optionsLoaded=false, building=false;
+  var recordsLoaded=false, optionsLoaded=false, tableLoaded=false, didInit=false, autosave=false, building=false;
+  var graceTimer=null;
   var grid=null, gridEl=document.getElementById("grid");
   var infoEl=document.getElementById("info");
   var pageEl=document.getElementById("page");
@@ -547,12 +548,11 @@
   var GRID_OPTS={
     column:COLS, cellHeight:CELL, margin:GUTTER_PX/2, float:true, animate:true,
     sizeToContent:true,
-    handle:".gs-drag",
     draggable:{handle:".gs-drag",scroll:false},
     resizable:{handles:"e,se,s,sw,w"},
     minRow:1
   };
-  function onGridChange(){if(building)return;syncLayout();scheduleSave();}
+  function onGridChange(){if(building||!autosave)return;syncLayout();scheduleSave();}
   function syncLayout(){
     if(!grid)return;
     var nodes=grid.save(false)||[];
@@ -561,6 +561,8 @@
     state.layout=state.layout.map(function(n){return byId[n.id]||n;});
     // ajoute toute node nouvelle
     Object.keys(byId).forEach(function(id){if(!layoutById(id))state.layout.push(byId[id]);});
+    // resynchronise la taille mémorisée des images après resize
+    Object.keys(byId).forEach(function(id){var b=state.blocks[id];if(b&&b.type==="image"){b._w=byId[id].w;b._h=byId[id].h;}});
   }
 
   function render(){
@@ -594,7 +596,7 @@
       grid.on("added",onGridChange);
       grid.on("removed",onGridChange);
       grid.on("resizestop",onGridChange);
-      setTimeout(function(){building=false;syncLayout();scheduleSave();},0);
+      setTimeout(function(){building=false;syncLayout();if(autosave)scheduleSave();},0);
     }catch(e){lastError="render : "+(e&&e.message||e);updateInfo();}
   }
 
@@ -624,9 +626,17 @@
 
   // ========================= PERSIST / LOAD =========================
   function payload(){return {v:VER,blocks:state.blocks,layout:state.layout,hidden:state.hidden};}
+  // Sérialisation canonique : même ordre de clés des deux côtés pour fiabiliser la détection d'écho
+  function canon(o){
+    o=o||{};
+    var lay=(Array.isArray(o.layout)?o.layout:[]).map(function(n){
+      return {id:n.id,x:(n.x==null?null:n.x),y:(n.y==null?null:n.y),w:(n.w==null?null:n.w),h:(n.h==null?null:n.h)};
+    });
+    return JSON.stringify({v:o.v||VER,blocks:o.blocks||{},layout:lay,hidden:o.hidden||{}});
+  }
   function persist(){
     if(typeof grist==="undefined")return;
-    var data=payload();var s=JSON.stringify(data);
+    var data=payload();var s=canon(data);
     if(s===lastPersisted)return;
     lastPersisted=s;
     var setter=null;
@@ -765,20 +775,39 @@
     infoEl.textContent="Erreur : GridStack non chargé (CDN bloqué ?)";
     return;
   }
-  try{grist.ready({requiredAccess:"full"});}catch(e){lastError="ready : "+e.message;}
-  grist.onRecords(function(records){try{allRecords=records||[];recordsLoaded=true;render();}catch(e){lastError="onRecords : "+e.message;updateInfo();}});
-  if(grist.onOptions)grist.onOptions(function(opts){
-    try{
-      optionsLoaded=true;
-      var a=opts&&opts.atlas;
-      var s=a?JSON.stringify({v:a.v,blocks:a.blocks,layout:a.layout,hidden:a.hidden}):"";
-      if(s&&s===lastPersisted)return; // écho de notre propre setOption : on ignore
-      loadFromAtlas(a);
-      lastPersisted=s;
+  // On ne construit (et surtout on ne sauvegarde) qu'une fois données + options + table chargées.
+  // Sinon onRecords arrivant avant onOptions crée une mise en page par défaut qui écrase l'état réel.
+  function maybeInit(){
+    if(didInit)return;
+    if(recordsLoaded&&optionsLoaded&&tableLoaded){
+      didInit=true;clearTimeout(graceTimer);
       render();
-    }catch(e){lastError="onOptions : "+e.message;updateInfo();}
-  });
-  try{grist.getTable&&grist.getTable().getTableId().then(function(id){tableId=id;render();}).catch(function(e){lastError="getTableId : "+e.message;updateInfo();});}catch(e){lastError="getTable : "+e.message;updateInfo();}
+      setTimeout(function(){autosave=true;},80); // autorise la sauvegarde APRÈS le 1er rendu
+    }
+  }
+  try{grist.ready({requiredAccess:"full"});}catch(e){lastError="ready : "+e.message;}
+  // filet de sécurité : si une source ne répond pas, on démarre quand même après 2,5 s
+  graceTimer=setTimeout(function(){
+    if(didInit)return;
+    recordsLoaded=true;optionsLoaded=true;tableLoaded=true;didInit=true;
+    render();setTimeout(function(){autosave=true;},80);
+  },2500);
+
+  grist.onRecords(function(records){try{allRecords=records||[];recordsLoaded=true;if(didInit)render();else maybeInit();}catch(e){lastError="onRecords : "+e.message;updateInfo();}});
+  if(grist.onOptions){
+    grist.onOptions(function(opts){
+      try{
+        var a=opts&&opts.atlas;
+        var s=a?canon(a):"";
+        if(optionsLoaded&&s&&s===lastPersisted)return; // écho de notre propre setOption : on ignore
+        if(a)loadFromAtlas(a);
+        lastPersisted=s;
+        optionsLoaded=true;
+        if(didInit)render();else maybeInit();
+      }catch(e){lastError="onOptions : "+e.message;updateInfo();}
+    });
+  }else{optionsLoaded=true;}
+  try{grist.getTable&&grist.getTable().getTableId().then(function(id){tableId=id;tableLoaded=true;if(didInit)render();else maybeInit();}).catch(function(e){lastError="getTableId : "+e.message;tableLoaded=true;maybeInit();updateInfo();});}catch(e){lastError="getTable : "+e.message;tableLoaded=true;maybeInit();}
 })();
 </script>
 </body>
