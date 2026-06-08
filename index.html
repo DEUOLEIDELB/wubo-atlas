@@ -35,7 +35,15 @@
   .row{display:flex;align-items:stretch;break-inside:avoid;min-height:24px;position:relative;margin:0}
   /* Colonne = pile verticale de blocs */
   .col{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;position:relative}
-  .col.sortable-ghost,.block.sortable-ghost{opacity:.3}
+  /* Placeholder compact : des qu'on saisit un bloc, son emplacement se replie en une fine
+     barre -> l'espace d'origine se libere et plus rien n'est pousse a pleine hauteur.
+     La copie pleine taille suit le curseur (image de drag native, capturee avant le repli). */
+  .block.sortable-ghost{height:42px!important;min-height:0!important;max-height:42px!important;overflow:hidden!important;background:var(--violet-soft)!important;border:2px dashed var(--violet)!important;border-radius:6px!important;opacity:1!important;box-shadow:none!important;padding:0!important}
+  .block.sortable-ghost>*{visibility:hidden!important}
+  .col.sortable-ghost{opacity:.4}
+  /* Copie pleine taille qui suit le curseur (detachee du flux, ne pousse rien) */
+  .sortable-fallback{opacity:.92!important;box-shadow:0 12px 30px rgba(0,0,0,.28)!important;cursor:grabbing!important;pointer-events:none!important;z-index:200!important}
+  .sortable-fallback .block-tools{display:none!important}
 
   /* Drop zone verticale entre colonnes (split horizontal) */
   .colgap{flex:0 0 10px;align-self:stretch;border-radius:4px;background:transparent;border:1px dashed transparent;transition:background .12s,border-color .12s}
@@ -244,7 +252,7 @@
   var allRecords=[], tableId="", lastError="";
   // Modèle : state.rows[].cols[].blocks[]  +  state.hidden = {recId:true}
   var state={rows:[],hidden:{}};
-  var VER="v11";
+  var VER="v12";
   var recordsLoaded=false, optionsLoaded=false, tableLoaded=false, didInit=false, autosave=false;
   var graceTimer=null, lastPersisted="", lastSaved="";
   var sortables=[];
@@ -811,7 +819,10 @@
       animation:150,
       easing:"cubic-bezier(.2,0,0,1)",
       ghostClass:"sortable-ghost",
-      forceFallback:false,
+      forceFallback:true,
+      fallbackOnBody:true,
+      fallbackTolerance:6,
+      fallbackClass:"sortable-fallback",
       // Rigidite : il faut recouvrir nettement une cible avant que l'insertion bascule
       swapThreshold:0.95,
       invertSwap:false,
