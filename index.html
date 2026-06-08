@@ -258,7 +258,7 @@
   var allRecords=[], tableId="", lastError="";
   // Modèle : state.rows[].cols[].blocks[]  +  state.hidden = {recId:true}
   var state={rows:[],hidden:{}};
-  var VER="v13";
+  var VER="v14";
   var recordsLoaded=false, optionsLoaded=false, tableLoaded=false, didInit=false, autosave=false;
   var graceTimer=null, lastPersisted="", lastSaved="";
   var sortables=[];
@@ -822,7 +822,7 @@
       group:"blocks",
       draggable:".block",
       handle:".bhandle",
-      animation:150,
+      animation:110,
       easing:"cubic-bezier(.2,0,0,1)",
       ghostClass:"sortable-ghost",
       forceFallback:true,
@@ -832,8 +832,9 @@
       // Rigidite : il faut recouvrir nettement une cible avant que l'insertion bascule
       swapThreshold:0.95,
       invertSwap:false,
-      // les petites zones (gaps) attrapent de plus loin, sans changer leur taille visuelle
-      emptyInsertThreshold:28,
+      // Les zones sont deja grosses visuellement (30/44px pendant le drag) : un halo reduit
+      // evite que les zones vides "volent" l'insertion pres d'une bordure -> bascule nette
+      emptyInsertThreshold:5,
       onStart:function(){isSortableDragging=true;document.body.classList.add("dragging");hideFmtToolbar();},
       onEnd:function(){isSortableDragging=false;document.body.classList.remove("dragging");rebuildStateFromDOM();autosave=true;persist();render();}
     };
